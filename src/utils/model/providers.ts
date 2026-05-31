@@ -30,6 +30,30 @@ export function isLocalProvider(): boolean {
   return getAPIProvider() === 'local'
 }
 
+// ── Canonical provider predicates ───────────────────────────────────
+// Single source of truth for the "which provider are we on" branching that
+// was previously open-coded across the codebase. The richer ProviderAdapter
+// registry (src/services/api/providerAdapter.ts) builds on these.
+
+/**
+ * A non-first-party transport: Bedrock, Vertex, Foundry, Codex, or local.
+ * Use instead of open-coding `getAPIProvider() !== 'firstParty'`.
+ */
+export function isThirdPartyProvider(): boolean {
+  return getAPIProvider() !== 'firstParty'
+}
+
+/**
+ * Providers that authenticate with their own credentials (or none at all) and
+ * therefore do NOT require an Anthropic API key / OAuth login: Bedrock, Vertex,
+ * Foundry, and local. Note this intentionally excludes Codex ('openai'), whose
+ * authentication is handled via its own OAuth path.
+ */
+export function providerBringsOwnCredentials(): boolean {
+  const p = getAPIProvider()
+  return p === 'bedrock' || p === 'vertex' || p === 'foundry' || p === 'local'
+}
+
 export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
   return getAPIProvider() as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 }
