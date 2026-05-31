@@ -1,7 +1,13 @@
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/index.js'
 import { isEnvTruthy } from '../envUtils.js'
 
-export type APIProvider = 'firstParty' | 'bedrock' | 'vertex' | 'foundry' | 'openai'
+export type APIProvider =
+  | 'firstParty'
+  | 'bedrock'
+  | 'vertex'
+  | 'foundry'
+  | 'openai'
+  | 'local'
 
 export function getAPIProvider(): APIProvider {
   return isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)
@@ -12,7 +18,16 @@ export function getAPIProvider(): APIProvider {
         ? 'foundry'
         : isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)
           ? 'openai'
-          : 'firstParty'
+          : // Any OpenAI-compatible /chat/completions endpoint: Ollama, vLLM,
+            // LM Studio, OpenRouter, Groq, etc. Runs fully local, no API key.
+            isEnvTruthy(process.env.CLAUDE_CODE_USE_LOCAL)
+            ? 'local'
+            : 'firstParty'
+}
+
+/** True when routing to a self-hosted / OpenAI-compatible local endpoint. */
+export function isLocalProvider(): boolean {
+  return getAPIProvider() === 'local'
 }
 
 export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {

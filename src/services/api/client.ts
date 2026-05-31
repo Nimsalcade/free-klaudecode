@@ -36,6 +36,10 @@ import {
   isEnvTruthy,
 } from '../../utils/envUtils.js'
 import { createCodexFetch } from './codex-fetch-adapter.js'
+import {
+  createLocalFetch,
+  getLocalProviderConfig,
+} from './local-fetch-adapter.js'
 
 /**
  * Environment variables for different client types:
@@ -318,6 +322,21 @@ export async function getAnthropicClient({
       }
       return new Anthropic(clientConfig)
     }
+  }
+
+  // ── Local / OpenAI-compatible provider via fetch adapter ──────────
+  // Routes to Ollama / vLLM / LM Studio / OpenRouter / etc. No API key,
+  // no callbacks home — the model runs on hardware you control.
+  if (getAPIProvider() === 'local') {
+    const localConfig = getLocalProviderConfig()
+    const localFetch = createLocalFetch(localConfig)
+    const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+      apiKey: 'local-placeholder', // SDK requires a key; the adapter handles transport
+      ...ARGS,
+      fetch: localFetch as unknown as typeof globalThis.fetch,
+      ...(isDebugToStdErr() && { logger: createStderrLogger() }),
+    }
+    return new Anthropic(clientConfig)
   }
 
   // Determine authentication method based on available tokens
