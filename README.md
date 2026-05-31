@@ -147,6 +147,39 @@ free-code
 
 Supports custom deployment IDs as model names.
 
+### Local & OpenAI-compatible models -- run anything, no API key
+
+Point free-code at **any OpenAI-compatible `/chat/completions` endpoint** and run
+a coding agent entirely on hardware you control -- no API key, no network, no
+callbacks home. Works with Ollama, llama.cpp, vLLM, LM Studio, OpenRouter, Groq,
+DeepSeek, Together, and anything else that speaks the OpenAI Chat Completions API.
+
+```bash
+# Ollama (default endpoint, http://localhost:11434/v1)
+export CLAUDE_CODE_USE_LOCAL=1
+export CLAUDE_CODE_LOCAL_MODEL="qwen2.5-coder:32b"
+free-code
+
+# Any other OpenAI-compatible server (vLLM, LM Studio, OpenRouter, ...)
+export CLAUDE_CODE_USE_LOCAL=1
+export CLAUDE_CODE_LOCAL_BASE_URL="http://localhost:1234/v1"
+export CLAUDE_CODE_LOCAL_MODEL="your-model-name"
+export CLAUDE_CODE_LOCAL_API_KEY="sk-..."   # optional; most local servers ignore it
+free-code
+```
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `CLAUDE_CODE_USE_LOCAL` | Enable the local / OpenAI-compatible provider | -- |
+| `CLAUDE_CODE_LOCAL_BASE_URL` | OpenAI-compatible base URL | `http://localhost:11434/v1` |
+| `CLAUDE_CODE_LOCAL_MODEL` | Model name to send to the server | request model |
+| `CLAUDE_CODE_LOCAL_API_KEY` | Optional bearer token | `not-needed` |
+
+Under the hood, a fetch adapter (`src/services/api/local-fetch-adapter.ts`)
+translates between the Anthropic Messages API and the OpenAI Chat Completions API
+in both directions -- system prompts, tool definitions, tool-call round-trips,
+vision (base64 images), streaming, and token accounting all map across cleanly.
+
 ### Provider Selection Summary
 
 | Provider | Env Variable | Auth Method |
@@ -156,6 +189,7 @@ Supports custom deployment IDs as model names.
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | AWS credentials |
 | Google Vertex AI | `CLAUDE_CODE_USE_VERTEX=1` | `gcloud` ADC |
 | Anthropic Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_API_KEY` |
+| Local / OpenAI-compatible | `CLAUDE_CODE_USE_LOCAL=1` | none (or optional bearer token) |
 
 ---
 
