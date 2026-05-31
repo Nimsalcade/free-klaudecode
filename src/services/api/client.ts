@@ -11,9 +11,7 @@ import {
   getAnthropicApiKey,
   getApiKeyFromApiKeyHelper,
   getClaudeAIOAuthTokens,
-  getCodexOAuthTokens,
   isClaudeAISubscriber,
-  isCodexSubscriber,
   refreshAndGetAwsCredentials,
   refreshGcpCredentialsIfNeeded,
 } from 'src/utils/auth.js'
@@ -35,11 +33,7 @@ import {
   getVertexRegionForModel,
   isEnvTruthy,
 } from '../../utils/envUtils.js'
-import { createCodexFetch } from './codex-fetch-adapter.js'
-import {
-  createLocalFetch,
-  getLocalProviderConfig,
-} from './local-fetch-adapter.js'
+import { getProviderAdapter } from './providerAdapter.js'
 
 /**
  * Environment variables for different client types:
@@ -309,31 +303,18 @@ export async function getAnthropicClient({
     return new AnthropicVertex(vertexArgs) as unknown as Anthropic
   }
 
-  // ── Codex (OpenAI) provider via fetch adapter ─────────────────────
-  if (isCodexSubscriber()) {
-    const codexTokens = getCodexOAuthTokens()
-    if (codexTokens?.accessToken) {
-      const codexFetch = createCodexFetch(codexTokens.accessToken)
-      const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
-        apiKey: 'codex-placeholder', // SDK requires a key but the fetch adapter handles auth
-        ...ARGS,
-        fetch: codexFetch as unknown as typeof globalThis.fetch,
-        ...(isDebugToStdErr() && { logger: createStderrLogger() }),
-      }
-      return new Anthropic(clientConfig)
-    }
-  }
-
-  // ── Local / OpenAI-compatible provider via fetch adapter ──────────
-  // Routes to Ollama / vLLM / LM Studio / OpenRouter / etc. No API key,
-  // no callbacks home — the model runs on hardware you control.
-  if (getAPIProvider() === 'local') {
-    const localConfig = getLocalProviderConfig()
-    const localFetch = createLocalFetch(localConfig)
+  // ── Fetch-adapter providers (Codex, local OpenAI-compatible) ──────
+  // These route the Anthropic SDK through a translating fetch shim rather than
+  // a native SDK. The ProviderAdapter registry decides which (if any) applies
+  // and supplies the fetch; the SDK just needs a placeholder key since the
+  // adapter owns transport and auth.
+  const providerAdapter = getProviderAdapter()
+  const adapterFetch = providerAdapter.createFetch()
+  if (adapterFetch) {
     const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
-      apiKey: 'local-placeholder', // SDK requires a key; the adapter handles transport
+      apiKey: `${providerAdapter.id}-placeholder`,
       ...ARGS,
-      fetch: localFetch as unknown as typeof globalThis.fetch,
+      fetch: adapterFetch as unknown as typeof globalThis.fetch,
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
     }
     return new Anthropic(clientConfig)
