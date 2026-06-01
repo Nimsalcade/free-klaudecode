@@ -26,6 +26,12 @@ export CLAUDE_CODE_USE_LOCAL=1
 export CLAUDE_CODE_LOCAL_MODEL="${CLAUDE_CODE_LOCAL_MODEL:-qwen2.5-coder:7b}"
 export CLAUDE_CODE_LOCAL_BASE_URL="${CLAUDE_CODE_LOCAL_BASE_URL:-http://localhost:11434/v1}"
 
+# When running a local model you typically don't want Anthropic-account
+# baggage. Disable claude.ai-synced MCP servers by default — a stale/unreachable
+# synced server otherwise blocks startup before the local model is ever called.
+# Override by exporting ENABLE_CLAUDEAI_MCP_SERVERS=1 before running this script.
+export ENABLE_CLAUDEAI_MCP_SERVERS="${ENABLE_CLAUDEAI_MCP_SERVERS:-0}"
+
 # Build the binary if it isn't there yet.
 if [[ ! -x ./cli ]]; then
   echo "[run-local] ./cli not found — building (one-time, ~30s)..." >&2
