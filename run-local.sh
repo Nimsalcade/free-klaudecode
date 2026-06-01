@@ -32,6 +32,12 @@ export CLAUDE_CODE_LOCAL_BASE_URL="${CLAUDE_CODE_LOCAL_BASE_URL:-http://localhos
 # Override by exporting ENABLE_CLAUDEAI_MCP_SERVERS=1 before running this script.
 export ENABLE_CLAUDEAI_MCP_SERVERS="${ENABLE_CLAUDEAI_MCP_SERVERS:-0}"
 
+# Clear any inherited paid-gateway credentials so the local provider can't be
+# shadowed by a configured Anthropic endpoint (e.g. ANTHROPIC_BASE_URL /
+# ANTHROPIC_AUTH_TOKEN from ~/.claude/settings.json). The local adapter owns
+# transport+auth; these must not point the SDK at a billing gateway.
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
+
 # Build the binary if it isn't there yet.
 if [[ ! -x ./cli ]]; then
   echo "[run-local] ./cli not found — building (one-time, ~30s)..." >&2
