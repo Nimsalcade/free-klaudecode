@@ -32,6 +32,11 @@ export CLAUDE_CODE_LOCAL_BASE_URL="${CLAUDE_CODE_LOCAL_BASE_URL:-http://localhos
 # Override by exporting ENABLE_CLAUDEAI_MCP_SERVERS=1 before running this script.
 export ENABLE_CLAUDEAI_MCP_SERVERS="${ENABLE_CLAUDEAI_MCP_SERVERS:-0}"
 
+# Emit per-phase startup checkpoints to the debug log. Lets a hang between
+# phases be pinpointed via --debug-to-stderr (look for [STARTUP_PROFILE] lines;
+# the last one before output stops names the stalled phase).
+export CLAUDE_CODE_PROFILE_STARTUP="${CLAUDE_CODE_PROFILE_STARTUP:-1}"
+
 # Clear any inherited paid-gateway credentials so the local provider can't be
 # shadowed by a configured Anthropic endpoint (e.g. ANTHROPIC_BASE_URL /
 # ANTHROPIC_AUTH_TOKEN from ~/.claude/settings.json). The local adapter owns
