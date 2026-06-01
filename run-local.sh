@@ -38,6 +38,19 @@ export ENABLE_CLAUDEAI_MCP_SERVERS="${ENABLE_CLAUDEAI_MCP_SERVERS:-0}"
 # transport+auth; these must not point the SDK at a billing gateway.
 unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL
 
+# Full isolation from the user's ~/.claude by default. The real config dir
+# carries settings.json (which re-applies ANTHROPIC_BASE_URL/AUTH_TOKEN inside
+# the process), installed plugins, hooks, and synced MCP servers — any of which
+# can stall or misroute a local run. We point HOME at a dedicated, empty config
+# dir so a local launch is clean and reproducible. Opt out with
+# CLAUDE_LOCAL_USE_REAL_HOME=1 to use your normal ~/.claude.
+if [[ -z "${CLAUDE_LOCAL_USE_REAL_HOME:-}" ]]; then
+  CLAUDE_LOCAL_HOME="${CLAUDE_LOCAL_HOME:-$HOME/.free-code-local}"
+  mkdir -p "$CLAUDE_LOCAL_HOME"
+  export HOME="$CLAUDE_LOCAL_HOME"
+  echo "[run-local] isolated config dir: $HOME (set CLAUDE_LOCAL_USE_REAL_HOME=1 to use your real ~/.claude)" >&2
+fi
+
 # Build the binary if it isn't there yet.
 if [[ ! -x ./cli ]]; then
   echo "[run-local] ./cli not found — building (one-time, ~30s)..." >&2
