@@ -2726,7 +2726,33 @@ async function run(): Promise<CommanderCommand> {
       // fetch was kicked off early (line ~2558) so only residual time blocks
       // here. --bare skips claude.ai entirely for perf-sensitive scripts.
       profileCheckpoint('before_connectMcp');
-      await connectMcpBatch(regularMcpConfigs, 'regular');
+      // Bounded wait: a single unreachable MCP server (or slow connector)
+      // must not hang the whole -p run before the model is ever called.
+      // connectMcpBatch's promise keeps running in the background and updates
+      // headlessStore as servers connect, so turn 2+ still sees them; we just
+      // don't block turn 1 indefinitely. Per-server connects already have their
+      // own 30s cap (getConnectionTimeoutMs); this caps the aggregate wait.
+      // Overridable via MCP_STARTUP_TIMEOUT for users who want to hard-wait.
+      const REGULAR_MCP_STARTUP_TIMEOUT_MS =
+        parseInt(process.env.MCP_STARTUP_TIMEOUT || '', 10) || 10_000;
+      const regularMcpConnect = connectMcpBatch(regularMcpConfigs, 'regular');
+      await Promise.race([
+        regularMcpConnect,
+        new Promise<void>(resolve => {
+          const t = setTimeout(() => {
+            logForDebugging(
+              `[MCP] regular server connect exceeded ${REGULAR_MCP_STARTUP_TIMEOUT_MS}ms; proceeding (connect continues in background)`,
+            );
+            resolve();
+          }, REGULAR_MCP_STARTUP_TIMEOUT_MS);
+          // Don't keep the event loop alive solely for this timer.
+          (t as { unref?: () => void }).unref?.();
+          regularMcpConnect.finally(() => {
+            clearTimeout(t);
+            resolve();
+          });
+        }),
+      ]);
       profileCheckpoint('after_connectMcp');
       // Dedup: suppress plugin MCP servers that duplicate a claude.ai
       // connector (connector wins), then connect claude.ai servers.
