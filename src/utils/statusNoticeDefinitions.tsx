@@ -1,7 +1,7 @@
 // biome-ignore-all assist/source/organizeImports: ANT-ONLY import markers must not be reordered
 import { Box, Text } from '../ink.js';
 import * as React from 'react';
-import { getLargeMemoryFiles, MAX_MEMORY_CHARACTER_COUNT, type MemoryFileInfo } from './claudemd.js';
+import { getLargeMemoryFiles, MAX_MEMORY_CHARACTER_COUNT, type MemoryFileInfo } from './deepclimd.js';
 import figures from 'figures';
 import { getCwd } from './cwd.js';
 import { relative } from 'path';
@@ -51,7 +51,7 @@ const largeMemoryFilesNotice: StatusNoticeDefinition = {
   }
 };
 const claudeAiSubscriberExternalTokenNotice: StatusNoticeDefinition = {
-  id: 'claude-ai-external-token',
+  id: 'deepcli-ai-external-token',
   type: 'warning',
   isActive: () => {
     const authTokenInfo = getAuthTokenSource();
@@ -62,9 +62,9 @@ const claudeAiSubscriberExternalTokenNotice: StatusNoticeDefinition = {
     return <Box flexDirection="row" marginTop={1}>
         <Text color="warning">{figures.warning}</Text>
         <Text color="warning">
-          Auth conflict: Using {authTokenInfo.source} instead of Claude account
+          Auth conflict: Using {authTokenInfo.source} instead of DeepCLI account
           subscription token. Either unset {authTokenInfo.source}, or run
-          `claude /logout`.
+          `deepcli /logout`.
         </Text>
       </Box>;
   }
@@ -89,8 +89,8 @@ const apiKeyConflictNotice: StatusNoticeDefinition = {
     return <Box flexDirection="row" marginTop={1}>
         <Text color="warning">{figures.warning}</Text>
         <Text color="warning">
-          Auth conflict: Using {apiKeySource} instead of Anthropic Console key.
-          Either unset {apiKeySource}, or run `claude /logout`.
+          Auth conflict: Using {apiKeySource} instead of NexusAI Console key.
+          Either unset {apiKeySource}, or run `deepcli /logout`.
         </Text>
       </Box>;
   }
@@ -182,7 +182,7 @@ const jetbrainsPluginNotice: StatusNoticeDefinition = {
         <Text>
           Install the <Text color="ide">{ideName}</Text> plugin from the
           JetBrains Marketplace:{' '}
-          <Text bold>https://docs.claude.com/s/claude-code-jetbrains</Text>
+          <Text bold>https://docs.deepcli.com/s/deepcli-code-jetbrains</Text>
         </Text>
       </Box>;
   }

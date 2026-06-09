@@ -8,7 +8,7 @@ import { isOpus1mMergeEnabled } from '../../utils/model/model.js';
 import { AnimatedAsterisk } from './AnimatedAsterisk.js';
 const MAX_SHOW_COUNT = 6;
 export function shouldShowOpus1mMergeNotice(): boolean {
-  return isOpus1mMergeEnabled() && (getGlobalConfig().opus1mMergeNoticeSeenCount ?? 0) < MAX_SHOW_COUNT;
+  return false;
 }
 export function Opus1mMergeNotice() {
   const $ = _c(4);
@@ -45,7 +45,7 @@ export function Opus1mMergeNotice() {
   }
   let t2;
   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = <Box paddingLeft={2}><AnimatedAsterisk char={UP_ARROW} /><Text dimColor={true}>{" "}Opus now defaults to 1M context · 5x more room, same pricing</Text></Box>;
+    t2 = <Box paddingLeft={2}><AnimatedAsterisk char={UP_ARROW} /><Text dimColor={true}>{" "}DeepSeek-V4 Pro now defaults to 1M context · Powered by Antigravity</Text></Box>;
     $[3] = t2;
   } else {
     t2 = $[3];

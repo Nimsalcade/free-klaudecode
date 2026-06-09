@@ -2,7 +2,7 @@
  * inc-5046: fetch the official marketplace from a GCS mirror instead of
  * git-cloning GitHub on every startup.
  *
- * Backend (anthropic#317037) publishes a marketplace-only zip alongside the
+ * Backend (nexusai#317037) publishes a marketplace-only zip alongside the
  * titanium squashfs, keyed by base repo SHA. This module fetches the `latest`
  * pointer, compares against a local sentinel, and downloads+extracts the zip
  * when there's a new SHA. Callers decide fallback behavior on failure.
@@ -24,14 +24,14 @@ type SafeString = AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 // binary ships from — nativeInstaller/download.ts:24 uses the raw GCS URL).
 // `{sha}.zip` is content-addressed so CDN can cache it indefinitely;
 // `latest` has Cache-Control: max-age=300 so CDN staleness is bounded.
-// Backend (anthropic#317037) populates this prefix.
+// Backend (nexusai#317037) populates this prefix.
 const GCS_BASE =
   'https://downloads.claude.ai/claude-code-releases/plugins/claude-plugins-official'
 
-// Zip arc paths are seed-dir-relative (marketplaces/claude-plugins-official/…)
+// Zip arc paths are seed-dir-relative (marketplaces/deepcli-plugins-official/…)
 // so the titanium seed machinery can use the same zip. Strip this prefix when
 // extracting for a laptop install.
-const ARC_PREFIX = 'marketplaces/claude-plugins-official/'
+const ARC_PREFIX = 'marketplaces/deepcli-plugins-official/'
 
 /**
  * Fetch the official marketplace from GCS and extract to installLocation.

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Text } from '../ink.js';
 import { isClaudeAISubscriber } from '../utils/auth.js';
-import { isChromeExtensionInstalled, shouldEnableClaudeInChrome } from '../utils/claudeInChrome/setup.js';
+import { isChromeExtensionInstalled, shouldEnableClaudeInChrome } from '../utils/deepcliInChrome/setup.js';
 import { isRunningOnHomespace } from '../utils/envUtils.js';
 import { useStartupNotification } from './notifs/useStartupNotification.js';
 function getChromeFlag(): boolean | undefined {
@@ -40,8 +40,8 @@ async function _temp() {
   }
   if (chromeFlag === undefined) {
     return {
-      key: "claude-in-chrome-default-enabled",
-      text: "Claude in Chrome enabled \xB7 /chrome",
+      key: "deepcli-in-chrome-default-enabled",
+      text: "DeepCLI in Chrome enabled \xB7 /chrome",
       priority: "low"
     };
   }

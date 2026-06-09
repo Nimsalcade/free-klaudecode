@@ -2,7 +2,7 @@
  * Self-contained OpenAI Codex OAuth 2.0 PKCE client.
  *
  * This module handles the complete Codex login flow independently of the
- * Anthropic OAuth client (client.ts). It manages:
+ * NexusAI OAuth client (client.ts). It manages:
  * - PKCE challenge generation
  * - A local HTTP server on port 1455 (required by OpenAI's registered redirect URI)
  * - Authorization URL construction

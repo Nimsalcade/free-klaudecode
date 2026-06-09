@@ -18,7 +18,7 @@ import { handleMcpjsonServerApprovals } from './services/mcpServerApproval.js';
 import { AppStateProvider } from './state/AppState.js';
 import { onChangeAppState } from './state/onChangeAppState.js';
 import { normalizeApiKeyForConfig } from './utils/authPortable.js';
-import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from './utils/claudemd.js';
+import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from './utils/deepclimd.js';
 import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from './utils/config.js';
 import { updateDeepLinkTerminalPreference } from './utils/deepLink/terminalPreference.js';
 import { isEnvTruthy, isRunningOnHomespace } from './utils/envUtils.js';
@@ -101,7 +101,7 @@ export async function renderAndRun(root: Root, element: React.ReactNode): Promis
   await root.waitUntilExit();
   await gracefulShutdown(0);
 }
-export async function showSetupScreens(root: Root, permissionMode: PermissionMode, allowDangerouslySkipPermissions: boolean, commands?: Command[], claudeInChrome?: boolean, devChannels?: ChannelEntry[]): Promise<boolean> {
+export async function showSetupScreens(root: Root, permissionMode: PermissionMode, allowDangerouslySkipPermissions: boolean, commands?: Command[], deepcliInChrome?: boolean, devChannels?: ChannelEntry[]): Promise<boolean> {
   if ("production" === 'test' || isEnvTruthy(false) || process.env.IS_DEMO // Skip onboarding in demo mode
   ) {
     return false;
@@ -160,13 +160,13 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       await handleMcpjsonServerApprovals(root);
     }
 
-    // Check for claude.md includes that need approval
+    // Check for deepcli.md includes that need approval
     if (await shouldShowClaudeMdExternalIncludesWarning()) {
       const externalIncludes = getExternalClaudeMdIncludes(await getMemoryFiles(true));
       const {
-        ClaudeMdExternalIncludesDialog
-      } = await import('./components/ClaudeMdExternalIncludesDialog.js');
-      await showSetupDialog(root, done => <ClaudeMdExternalIncludesDialog onDone={done} isStandaloneDialog externalIncludes={externalIncludes} />);
+        DeepCLIMdExternalIncludesDialog
+      } = await import('./components/DeepCLIMdExternalIncludesDialog.js');
+      await showSetupDialog(root, done => <DeepCLIMdExternalIncludesDialog onDone={done} isStandaloneDialog externalIncludes={externalIncludes} />);
     }
   }
 
@@ -202,7 +202,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
 
   // Check for custom API key
   // On homespace, ANTHROPIC_API_KEY is preserved in process.env for child
-  // processes but ignored by Claude Code itself (see auth.ts).
+  // processes but ignored by DeepCLI itself (see auth.ts).
   if (process.env.ANTHROPIC_API_KEY && !isRunningOnHomespace()) {
     const customApiKeyTruncated = normalizeApiKeyForConfig(process.env.ANTHROPIC_API_KEY);
     const keyStatus = getCustomApiKeyStatus(customApiKeyTruncated);
@@ -287,12 +287,12 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     }
   }
 
-  // Show Chrome onboarding for first-time Claude in Chrome users
-  if (claudeInChrome && !getGlobalConfig().hasCompletedClaudeInChromeOnboarding) {
+  // Show Chrome onboarding for first-time DeepCLI in Chrome users
+  if (deepcliInChrome && !getGlobalConfig().hasCompletedDeepCLIInChromeOnboarding) {
     const {
-      ClaudeInChromeOnboarding
-    } = await import('./components/ClaudeInChromeOnboarding.js');
-    await showSetupDialog(root, done => <ClaudeInChromeOnboarding onDone={done} />);
+      DeepCLIInChromeOnboarding
+    } = await import('./components/DeepCLIInChromeOnboarding.js');
+    await showSetupDialog(root, done => <DeepCLIInChromeOnboarding onDone={done} />);
   }
   return onboardingShown;
 }
@@ -316,7 +316,7 @@ export function getRenderContext(exitOnCtrlC: boolean): {
   // offline analysis by bench/repl-scroll.ts. Captures the full TUI
   // render pipeline (yoga → screen buffer → diff → optimize → stdout)
   // so perf work on any phase can be validated against real user flows.
-  const frameTimingLogPath = process.env.CLAUDE_CODE_FRAME_TIMING_LOG;
+  const frameTimingLogPath = process.env.DEEPCLI_FRAME_TIMING_LOG;
   return {
     getFpsMetrics: () => fpsTracker.getMetrics(),
     stats,

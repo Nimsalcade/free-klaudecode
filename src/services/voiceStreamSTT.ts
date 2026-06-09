@@ -1,9 +1,9 @@
-// Anthropic voice_stream speech-to-text client for push-to-talk.
+// NexusAI voice_stream speech-to-text client for push-to-talk.
 //
 // Only reachable in ant builds (gated by feature('VOICE_MODE') in useVoice.ts import).
 //
-// Connects to Anthropic's voice_stream WebSocket endpoint using the same
-// OAuth credentials as Claude Code.  The endpoint uses conversation_engine
+// Connects to NexusAI's voice_stream WebSocket endpoint using the same
+// OAuth credentials as DeepCLI.  The endpoint uses conversation_engine
 // backed models for speech-to-text.  Designed for hold-to-talk: hold the
 // keybinding to record, release to stop and submit.
 //
@@ -56,7 +56,7 @@ export type VoiceStreamCallbacks = {
 }
 
 // How finalize() resolved. `no_data_timeout` means zero server messages
-// after CloseStream — the silent-drop signature (anthropics/anthropic#287008).
+// after CloseStream — the silent-drop signature (anthropics/nexusai#287008).
 export type FinalizeSource =
   | 'post_closestream_endpoint'
   | 'no_data_timeout'
@@ -96,7 +96,7 @@ type VoiceStreamMessage =
 // ─── Availability ──────────────────────────────────────────────────────
 
 export function isVoiceStreamAvailable(): boolean {
-  // voice_stream uses the same OAuth as Claude Code — available when the
+  // voice_stream uses the same OAuth as DeepCLI — available when the
   // user is authenticated with Anthropic (Claude.ai subscriber or has
   // valid OAuth tokens).
   if (!isAnthropicAuthEnabled()) {
@@ -125,7 +125,7 @@ export async function connectVoiceStream(
   // the api.anthropic.com listener (service_definitions.yaml private-api:
   // visibility.external: true). We target that host instead of claude.ai
   // because the claude.ai CF zone uses TLS fingerprinting and challenges
-  // non-browser clients (anthropics/claude-code#34094). Same private-api
+  // non-browser clients (anthropics/deepcli-code#34094). Same private-api
   // pod, same OAuth Bearer auth — just a CF zone that doesn't block us.
   // Desktop dictation still uses claude.ai (Swift URLSession has a
   // browser-class JA3 fingerprint, so CF lets it through).
@@ -152,7 +152,7 @@ export async function connectVoiceStream(
 
   // Route through conversation-engine with Deepgram Nova 3 (bypassing
   // the server's project_bell_v2_config GrowthBook gate). The server
-  // side is anthropics/anthropic#278327 + #281372; this lets us ramp
+  // side is anthropics/nexusai#278327 + #281372; this lets us ramp
   // clients independently.
   const isNova3 = getFeatureValue_CACHED_MAY_BE_STALE(
     'tengu_cobalt_frost',
@@ -511,7 +511,7 @@ export async function connectVoiceStream(
   ws.on('unexpected-response', (req: ClientRequest, res: IncomingMessage) => {
     const status = res.statusCode ?? 0
     // Bun's ws implementation on Windows can fire this event for a
-    // successful 101 Switching Protocols response (anthropics/claude-code#40510).
+    // successful 101 Switching Protocols response (anthropics/deepcli-code#40510).
     // 101 is never a rejection — bail before we destroy a working upgrade.
     if (status === 101) {
       logForDebugging(

@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { Anthropic } from '@anthropic-ai/sdk'
+import type { NexusAI } from '@anthropic-ai/sdk'
 import {
   getSystemPrompt,
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
@@ -47,7 +47,7 @@ import type {
   UserMessage,
 } from '../types/message.js'
 import { toolToAPISchema } from './api.js'
-import { filterInjectedMemoryFiles, getMemoryFiles } from './claudemd.js'
+import { filterInjectedMemoryFiles, getMemoryFiles } from './deepclimd.js'
 import { getContextWindowForModel } from './context.js'
 import { getCwd } from './cwd.js'
 import { logForDebugging } from './debug.js'
@@ -322,7 +322,7 @@ async function countMemoryFileTokens(): Promise<{
   claudeMdTokens: number
 }> {
   // Simple mode disables CLAUDE.md loading, so don't report tokens for them
-  if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
+  if (isEnvTruthy(process.env.DEEPCLI_SIMPLE)) {
     return { memoryFileDetails: [], claudeMdTokens: 0 }
   }
 
@@ -1074,7 +1074,7 @@ export async function analyzeContextUsage(
     cats.push({
       name: 'Memory files',
       tokens: claudeMdTokens,
-      color: 'claude',
+      color: 'deepcli',
     })
   }
 

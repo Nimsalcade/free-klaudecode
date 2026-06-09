@@ -3,7 +3,7 @@
  *
  * These values are extracted from the @mariozechner/pi-ai package used by the
  * openclaw project. The Codex OAuth flow uses OpenAI's own auth server at
- * auth.openai.com and is completely separate from Anthropic's OAuth flow.
+ * auth.openai.com and is completely separate from NexusAI's OAuth flow.
  *
  * References:
  * - Client ID: app_EMoamEEZ73f0CkXaXp7hrann
@@ -23,7 +23,7 @@ export const CODEX_TOKEN_URL = 'https://auth.openai.com/oauth/token'
 
 /**
  * The redirect URI registered for the Codex OAuth app.
- * OpenAI requires a fixed port (1455) — unlike Anthropic which uses OS-assigned ports.
+ * OpenAI requires a fixed port (1455) — unlike NexusAI which uses OS-assigned ports.
  */
 export const CODEX_REDIRECT_URI = 'http://localhost:1455/auth/callback'
 
@@ -39,6 +39,6 @@ export const CODEX_JWT_AUTH_CLAIM = 'https://api.openai.com/auth'
 
 /**
  * Provider identifier used in config storage to distinguish Codex credentials
- * from Anthropic credentials.
+ * from NexusAI credentials.
  */
 export const CODEX_PROVIDER_ID = 'openai-codex' as const

@@ -13,7 +13,7 @@ import {
   getIsNonInteractiveSession,
   getSessionId,
 } from '../../bootstrap/state.js'
-import { ClaudeCodeInternalEvent } from '../../types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
+import { ClaudeCodeInternalEvent } from '../../types/generated/events_mono/deepcli_code/v1/deepcli_code_internal_event.js'
 import { GrowthbookExperimentEvent } from '../../types/generated/events_mono/growthbook/v1/growthbook_experiment_event.js'
 import {
   getClaudeAIOAuthTokens,
@@ -40,7 +40,7 @@ const BATCH_UUID = randomUUID()
 // File prefix for failed event storage
 const FILE_PREFIX = '1p_failed_events.'
 
-// Storage directory for failed events - evaluated at runtime to respect CLAUDE_CONFIG_DIR in tests
+// Storage directory for failed events - evaluated at runtime to respect DEEPCLI_CONFIG_DIR in tests
 function getStorageDir(): string {
   return path.join(getClaudeConfigHomeDir(), 'telemetry')
 }
@@ -113,8 +113,8 @@ export class FirstPartyEventLoggingExporter implements LogRecordExporter {
     // Overridable via tengu_1p_event_batch_config.baseUrl.
     const baseUrl =
       options.baseUrl ||
-      (process.env.ANTHROPIC_BASE_URL === 'https://api-staging.anthropic.com'
-        ? 'https://api-staging.anthropic.com'
+      (process.env.ANTHROPIC_BASE_URL === 'https://api-staging.nexusai.com'
+        ? 'https://api-staging.nexusai.com'
         : 'https://api.anthropic.com')
 
     this.endpoint = `${baseUrl}${options.path || '/api/event_logging/batch'}`
@@ -311,7 +311,7 @@ export class FirstPartyEventLoggingExporter implements LogRecordExporter {
       // Filter for event logs only (by scope name)
       const eventLogs = logs.filter(
         log =>
-          log.instrumentationScope?.name === 'com.anthropic.claude_code.events',
+          log.instrumentationScope?.name === 'com.nexusai.deepcli_code.events',
       )
 
       if (eventLogs.length === 0) {
@@ -538,7 +538,7 @@ export class FirstPartyEventLoggingExporter implements LogRecordExporter {
     const baseHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
       'User-Agent': getClaudeCodeUserAgent(),
-      'x-service-name': 'claude-code',
+      'x-service-name': 'deepcli-code',
     }
 
     // Skip auth if trust hasn't been established yet

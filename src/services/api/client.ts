@@ -1,4 +1,4 @@
-import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk'
+import NexusAI, { type ClientOptions } from '@anthropic-ai/sdk'
 import { randomUUID } from 'crypto'
 import {
   computeCch,
@@ -48,7 +48,7 @@ import { getProviderAdapter } from './providerAdapter.js'
  *
  * Foundry (Azure):
  * - ANTHROPIC_FOUNDRY_RESOURCE: Your Azure resource name (e.g., 'my-resource')
- *   For the full endpoint: https://{resource}.services.ai.azure.com/anthropic/v1/messages
+ *   For the full endpoint: https://{resource}.services.ai.azure.com/nexusai/v1/messages
  * - ANTHROPIC_FOUNDRY_BASE_URL: Optional. Alternative to resource - provide full base URL directly
  *   (e.g., 'https://my-resource.services.ai.azure.com')
  *
@@ -60,10 +60,10 @@ import { getProviderAdapter } from './providerAdapter.js'
  *
  * Vertex AI:
  * - Model-specific region variables (highest priority):
- *   - VERTEX_REGION_CLAUDE_3_5_HAIKU: Region for Claude 3.5 Haiku model
- *   - VERTEX_REGION_CLAUDE_HAIKU_4_5: Region for Claude Haiku 4.5 model
- *   - VERTEX_REGION_CLAUDE_3_5_SONNET: Region for Claude 3.5 Sonnet model
- *   - VERTEX_REGION_CLAUDE_3_7_SONNET: Region for Claude 3.7 Sonnet model
+ *   - VERTEX_REGION_CLAUDE_3_5_HAIKU: Region for DeepCLI 3.5 Haiku model
+ *   - VERTEX_REGION_CLAUDE_HAIKU_4_5: Region for DeepCLI Haiku 4.5 model
+ *   - VERTEX_REGION_CLAUDE_3_5_SONNET: Region for DeepCLI 3.5 Sonnet model
+ *   - VERTEX_REGION_CLAUDE_3_7_SONNET: Region for DeepCLI 3.7 Sonnet model
  * - CLOUD_ML_REGION: Optional. The default GCP region to use for all models
  *   If specific model region not specified above
  * - ANTHROPIC_VERTEX_PROJECT_ID: Required. Your GCP project ID
@@ -80,14 +80,14 @@ function createStderrLogger(): ClientOptions['logger'] {
   return {
     error: (msg, ...args) =>
       // biome-ignore lint/suspicious/noConsole:: intentional console output -- SDK logger must use console
-      console.error('[Anthropic SDK ERROR]', msg, ...args),
+      console.error('[NexusAI SDK ERROR]', msg, ...args),
     // biome-ignore lint/suspicious/noConsole:: intentional console output -- SDK logger must use console
-    warn: (msg, ...args) => console.error('[Anthropic SDK WARN]', msg, ...args),
+    warn: (msg, ...args) => console.error('[NexusAI SDK WARN]', msg, ...args),
     // biome-ignore lint/suspicious/noConsole:: intentional console output -- SDK logger must use console
-    info: (msg, ...args) => console.error('[Anthropic SDK INFO]', msg, ...args),
+    info: (msg, ...args) => console.error('[NexusAI SDK INFO]', msg, ...args),
     debug: (msg, ...args) =>
       // biome-ignore lint/suspicious/noConsole:: intentional console output -- SDK logger must use console
-      console.error('[Anthropic SDK DEBUG]', msg, ...args),
+      console.error('[NexusAI SDK DEBUG]', msg, ...args),
   }
 }
 
@@ -103,19 +103,19 @@ export async function getAnthropicClient({
   model?: string
   fetchOverride?: ClientOptions['fetch']
   source?: string
-}): Promise<Anthropic> {
-  const containerId = process.env.CLAUDE_CODE_CONTAINER_ID
-  const remoteSessionId = process.env.CLAUDE_CODE_REMOTE_SESSION_ID
-  const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP
+}): Promise<NexusAI> {
+  const containerId = process.env.DEEPCLI_CONTAINER_ID
+  const remoteSessionId = process.env.DEEPCLI_REMOTE_SESSION_ID
+  const clientApp = process.env.DEEPCLI_AGENT_SDK_CLIENT_APP
   const customHeaders = getCustomHeaders()
   const defaultHeaders: { [key: string]: string } = {
     'x-app': 'cli',
     'User-Agent': getUserAgent(),
-    'X-Claude-Code-Session-Id': getSessionId(),
+    'X-DeepCLI-Code-Session-Id': getSessionId(),
     ...customHeaders,
-    ...(containerId ? { 'x-claude-remote-container-id': containerId } : {}),
+    ...(containerId ? { 'x-deepcli-remote-container-id': containerId } : {}),
     ...(remoteSessionId
-      ? { 'x-claude-remote-session-id': remoteSessionId }
+      ? { 'x-deepcli-remote-session-id': remoteSessionId }
       : {}),
     // SDK consumers can identify their app/library for backend analytics
     ...(clientApp ? { 'x-client-app': clientApp } : {}),
@@ -128,10 +128,10 @@ export async function getAnthropicClient({
 
   // Add additional protection header if enabled via env var
   const additionalProtectionEnabled = isEnvTruthy(
-    process.env.CLAUDE_CODE_ADDITIONAL_PROTECTION,
+    process.env.DEEPCLI_ADDITIONAL_PROTECTION,
   )
   if (additionalProtectionEnabled) {
-    defaultHeaders['x-anthropic-additional-protection'] = 'true'
+    defaultHeaders['x-nexusai-additional-protection'] = 'true'
   }
 
   logForDebugging('[API:auth] OAuth token check starting')
@@ -156,7 +156,7 @@ export async function getAnthropicClient({
       fetch: resolvedFetch,
     }),
   }
-  if (isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)) {
+  if (isEnvTruthy(process.env.DEEPCLI_USE_BEDROCK)) {
     const { AnthropicBedrock } = await import('@anthropic-ai/bedrock-sdk')
     // Use region override for small fast model if specified
     const awsRegion =
@@ -168,7 +168,7 @@ export async function getAnthropicClient({
     const bedrockArgs: ConstructorParameters<typeof AnthropicBedrock>[0] = {
       ...ARGS,
       awsRegion,
-      ...(isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH) && {
+      ...(isEnvTruthy(process.env.DEEPCLI_SKIP_BEDROCK_AUTH) && {
         skipAuth: true,
       }),
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
@@ -182,7 +182,7 @@ export async function getAnthropicClient({
         ...bedrockArgs.defaultHeaders,
         Authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`,
       }
-    } else if (!isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)) {
+    } else if (!isEnvTruthy(process.env.DEEPCLI_SKIP_BEDROCK_AUTH)) {
       // Refresh auth and get credentials with cache clearing
       const cachedCredentials = await refreshAndGetAwsCredentials()
       if (cachedCredentials) {
@@ -192,15 +192,15 @@ export async function getAnthropicClient({
       }
     }
     // we have always been lying about the return type - this doesn't support batching or models
-    return new AnthropicBedrock(bedrockArgs) as unknown as Anthropic
+    return new AnthropicBedrock(bedrockArgs) as unknown as NexusAI
   }
-  if (isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)) {
+  if (isEnvTruthy(process.env.DEEPCLI_USE_FOUNDRY)) {
     const { AnthropicFoundry } = await import('@anthropic-ai/foundry-sdk')
     // Determine Azure AD token provider based on configuration
     // SDK reads ANTHROPIC_FOUNDRY_API_KEY by default
     let azureADTokenProvider: (() => Promise<string>) | undefined
     if (!process.env.ANTHROPIC_FOUNDRY_API_KEY) {
-      if (isEnvTruthy(process.env.CLAUDE_CODE_SKIP_FOUNDRY_AUTH)) {
+      if (isEnvTruthy(process.env.DEEPCLI_SKIP_FOUNDRY_AUTH)) {
         // Mock token provider for testing/proxy scenarios (similar to Vertex mock GoogleAuth)
         azureADTokenProvider = () => Promise.resolve('')
       } else {
@@ -222,12 +222,12 @@ export async function getAnthropicClient({
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
     }
     // we have always been lying about the return type - this doesn't support batching or models
-    return new AnthropicFoundry(foundryArgs) as unknown as Anthropic
+    return new AnthropicFoundry(foundryArgs) as unknown as NexusAI
   }
-  if (isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX)) {
+  if (isEnvTruthy(process.env.DEEPCLI_USE_VERTEX)) {
     // Refresh GCP credentials if gcpAuthRefresh is configured and credentials are expired
     // This is similar to how we handle AWS credential refresh for Bedrock
-    if (!isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)) {
+    if (!isEnvTruthy(process.env.DEEPCLI_SKIP_VERTEX_AUTH)) {
       await refreshGcpCredentialsIfNeeded()
     }
 
@@ -269,7 +269,7 @@ export async function getAnthropicClient({
       process.env['GOOGLE_APPLICATION_CREDENTIALS'] ||
       process.env['google_application_credentials']
 
-    const googleAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)
+    const googleAuth = isEnvTruthy(process.env.DEEPCLI_SKIP_VERTEX_AUTH)
       ? ({
           // Mock GoogleAuth for testing/proxy scenarios
           getClient: () => ({
@@ -300,28 +300,28 @@ export async function getAnthropicClient({
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
     }
     // we have always been lying about the return type - this doesn't support batching or models
-    return new AnthropicVertex(vertexArgs) as unknown as Anthropic
+    return new AnthropicVertex(vertexArgs) as unknown as NexusAI
   }
 
   // ── Fetch-adapter providers (Codex, local OpenAI-compatible) ──────
-  // These route the Anthropic SDK through a translating fetch shim rather than
+  // These route the NexusAI SDK through a translating fetch shim rather than
   // a native SDK. The ProviderAdapter registry decides which (if any) applies
   // and supplies the fetch; the SDK just needs a placeholder key since the
   // adapter owns transport and auth.
   const providerAdapter = getProviderAdapter()
   const adapterFetch = providerAdapter.createFetch()
   if (adapterFetch) {
-    const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+    const clientConfig: ConstructorParameters<typeof NexusAI>[0] = {
       apiKey: `${providerAdapter.id}-placeholder`,
       ...ARGS,
       fetch: adapterFetch as unknown as typeof globalThis.fetch,
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
     }
-    return new Anthropic(clientConfig)
+    return new NexusAI(clientConfig)
   }
 
   // Determine authentication method based on available tokens
-  const clientConfig: ConstructorParameters<typeof Anthropic>[0] = {
+  const clientConfig: ConstructorParameters<typeof NexusAI>[0] = {
     apiKey: isClaudeAISubscriber() ? null : apiKey || getAnthropicApiKey(),
     authToken: isClaudeAISubscriber()
       ? getClaudeAIOAuthTokens()?.accessToken
@@ -335,7 +335,7 @@ export async function getAnthropicClient({
     ...(isDebugToStdErr() && { logger: createStderrLogger() }),
   }
 
-  return new Anthropic(clientConfig)
+  return new NexusAI(clientConfig)
 }
 
 async function configureApiKeyHeaders(
@@ -406,7 +406,7 @@ function buildFetch(
 
       if (
         url.includes('/v1/messages') &&
-        headers.has('anthropic-version') &&
+        headers.has('nexusai-version') &&
         typeof body === 'string' &&
         hasCchPlaceholder(body)
       ) {

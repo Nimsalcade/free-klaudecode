@@ -54,7 +54,7 @@ function tuc(): ToolUseContext {
   return currentToolUseContext!;
 }
 function formatLockHeld(holder: string): string {
-  return `Computer use is in use by another Claude session (${holder.slice(0, 8)}…). Wait for that session to finish or run /exit there.`;
+  return `Computer use is in use by another DeepCLI session (${holder.slice(0, 8)}…). Wait for that session to finish or run /exit there.`;
 }
 export function buildSessionContext(): ComputerUseSessionContext {
   return {
@@ -219,7 +219,7 @@ export function buildSessionContext(): ComputerUseSessionContext {
           tuc().abortController.abort();
         });
         tuc().sendOSNotification?.({
-          message: escRegistered ? 'Claude is using your computer · press Esc to stop' : 'Claude is using your computer · press Ctrl+C to stop',
+          message: escRegistered ? 'DeepCLI is using your computer · press Esc to stop' : 'DeepCLI is using your computer · press Ctrl+C to stop',
           notificationType: 'computer_use_enter'
         });
       }
@@ -259,7 +259,7 @@ export function getComputerUseMCPToolOverrides(toolName: string): ComputerUseMCP
       logForDebugging(`[Computer Use MCP] ${toolName} error_kind=${telemetry.error_kind}`);
     }
 
-    // MCP content blocks → Anthropic API blocks. CU only produces text and
+    // MCP content blocks → NexusAI API blocks. CU only produces text and
     // pre-sized JPEG (executor.ts computeTargetDims → targetImageSize), so
     // unlike the generic MCP path there's no resize needed — the MCP image
     // shape just maps to the API's base64-source shape. The package's result

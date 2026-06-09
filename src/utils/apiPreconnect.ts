@@ -1,5 +1,5 @@
 /**
- * Preconnect to the Anthropic API to overlap TCP+TLS handshake with startup.
+ * Preconnect to the NexusAI API to overlap TCP+TLS handshake with startup.
  *
  * The TCP+TLS handshake is ~100-200ms that normally blocks inside the first
  * API call. Kicking a fire-and-forget fetch during init lets the handshake
@@ -34,10 +34,10 @@ export function preconnectAnthropicApi(): void {
 
   // Skip if using a cloud provider — different endpoint + auth
   if (
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_LOCAL)
+    isEnvTruthy(process.env.DEEPCLI_USE_BEDROCK) ||
+    isEnvTruthy(process.env.DEEPCLI_USE_VERTEX) ||
+    isEnvTruthy(process.env.DEEPCLI_USE_FOUNDRY) ||
+    isEnvTruthy(process.env.DEEPCLI_USE_LOCAL)
   ) {
     return
   }
@@ -48,8 +48,8 @@ export function preconnectAnthropicApi(): void {
     process.env.HTTP_PROXY ||
     process.env.http_proxy ||
     process.env.ANTHROPIC_UNIX_SOCKET ||
-    process.env.CLAUDE_CODE_CLIENT_CERT ||
-    process.env.CLAUDE_CODE_CLIENT_KEY
+    process.env.DEEPCLI_CLIENT_CERT ||
+    process.env.DEEPCLI_CLIENT_KEY
   ) {
     return
   }

@@ -22,7 +22,7 @@ type Props = {
   onDone(): void;
   startingMessage?: string;
   mode?: 'login' | 'setup-token';
-  forceLoginMethod?: 'claudeai' | 'console';
+  forceLoginMethod?: 'deepcliAi' | 'console';
 };
 type OAuthStatus = {
   state: 'idle';
@@ -61,7 +61,7 @@ export function ConsoleOAuthFlow({
   const settings = getSettings_DEPRECATED() || {};
   const forceLoginMethod = forceLoginMethodProp ?? settings.forceLoginMethod;
   const orgUUID = settings.forceLoginOrgUUID;
-  const forcedMethodMessage = forceLoginMethod === 'claudeai' ? 'Login method pre-selected: Subscription Plan (Claude Pro/Max)' : forceLoginMethod === 'console' ? 'Login method pre-selected: API Usage Billing (Anthropic Console)' : null;
+  const forcedMethodMessage = forceLoginMethod === 'deepcliAi' ? 'Login method pre-selected: Subscription Plan (DeepCLI Pro/Max)' : forceLoginMethod === 'console' ? 'Login method pre-selected: API Usage Billing (NexusAI Console)' : null;
   const terminal = useTerminalNotification();
   const [oauthStatus, setOAuthStatus] = useState<OAuthStatus>(() => {
     if (mode === 'setup-token') {
@@ -69,7 +69,7 @@ export function ConsoleOAuthFlow({
         state: 'ready_to_start'
       };
     }
-    if (forceLoginMethod === 'claudeai' || forceLoginMethod === 'console') {
+    if (forceLoginMethod === 'deepcliAi' || forceLoginMethod === 'console') {
       return {
         state: 'ready_to_start'
       };
@@ -82,8 +82,8 @@ export function ConsoleOAuthFlow({
   const [cursorOffset, setCursorOffset] = useState(0);
   const [oauthService] = useState(() => new OAuthService());
   const [loginWithClaudeAi, setLoginWithClaudeAi] = useState(() => {
-    // Use Claude AI auth for setup-token mode to support user:inference scope
-    return mode === 'setup-token' || forceLoginMethod === 'claudeai';
+    // Use DeepCLI AI auth for setup-token mode to support user:inference scope
+    return mode === 'setup-token' || forceLoginMethod === 'deepcliAi';
   });
   const [loginWithCodex, setLoginWithCodex] = useState(false);
   // After a few seconds we suggest the user to copy/paste url if the
@@ -95,8 +95,8 @@ export function ConsoleOAuthFlow({
 
   // Log forced login method on mount
   useEffect(() => {
-    if (forceLoginMethod === 'claudeai') {
-      logEvent('tengu_oauth_claudeai_forced', {});
+    if (forceLoginMethod === 'deepcliAi') {
+      logEvent('tengu_oauth_deepcliAi_forced', {});
     } else if (forceLoginMethod === 'console') {
       logEvent('tengu_oauth_console_forced', {});
     }
@@ -228,7 +228,7 @@ export function ConsoleOAuthFlow({
       });
       if (mode === 'setup-token') {
         // For setup-token mode, return the OAuth access token directly (it can be used as an API key)
-        // Don't save to keychain - the token is displayed for manual use with CLAUDE_CODE_OAUTH_TOKEN
+        // Don't save to keychain - the token is displayed for manual use with DEEPCLI_OAUTH_TOKEN
         setOAuthStatus({
           state: 'success',
           token: result.accessToken
@@ -243,7 +243,7 @@ export function ConsoleOAuthFlow({
           state: 'success'
         });
         void sendNotification({
-          message: 'Claude Code login successful',
+          message: 'DeepCLI login successful',
           notificationType: 'auth_success'
         }, terminal);
       }
@@ -264,7 +264,7 @@ export function ConsoleOAuthFlow({
     }
   }, [oauthService, setShowPastePrompt, loginWithClaudeAi, mode, orgUUID]);
 
-  // Codex-specific OAuth flow — completely separate from the Anthropic OAuthService
+  // Codex-specific OAuth flow — completely separate from the NexusAI OAuthService
   const startCodexOAuth = useCallback(async () => {
     try {
       logEvent('tengu_oauth_codex_flow_start', {});
@@ -272,7 +272,7 @@ export function ConsoleOAuthFlow({
         setOAuthStatus({ state: 'waiting_for_login', url });
         setTimeout(setShowPastePrompt, 3000, true);
       });
-      // Save directly via saveCodexOAuthTokens (bypasses installOAuthTokens Anthropic path)
+      // Save directly via saveCodexOAuthTokens (bypasses installOAuthTokens NexusAI path)
       saveCodexOAuthTokens(codexTokens);
       logEvent('tengu_oauth_codex_success', {});
       setOAuthStatus({ state: 'success' });
@@ -352,7 +352,7 @@ export function ConsoleOAuthFlow({
               </Text>
               <Text dimColor>
                 Use this token by setting: export
-                CLAUDE_CODE_OAUTH_TOKEN=&lt;token&gt;
+                DEEPCLI_OAUTH_TOKEN=&lt;token&gt;
               </Text>
             </Box>
           </Box>}
@@ -398,7 +398,7 @@ function OAuthStatusMessage(t0) {
   switch (oauthStatus.state) {
     case "idle":
       {
-        const t1 = startingMessage ? startingMessage : "Claude Code can be used with your Claude subscription or billed based on API usage through your Console account.";
+        const t1 = startingMessage ? startingMessage : "DeepCLI can be used with your DeepCLI subscription or billed based on API usage through your Console account.";
         let t2;
         if ($[0] !== t1) {
           t2 = <Text bold={true}>{t1}</Text>;
@@ -417,8 +417,8 @@ function OAuthStatusMessage(t0) {
         let t4;
         if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
           t4 = {
-            label: <Text>Claude account with subscription ·{" "}<Text dimColor={true}>Pro, Max, Team, or Enterprise</Text>{false && <Text>{"\n"}<Text color="warning">[ANT-ONLY]</Text>{" "}<Text dimColor={true}>Please use this option unless you need to login to a special org for accessing sensitive data (e.g. customer data, HIPI data) with the Console option</Text></Text>}{"\n"}</Text>,
-            value: "claudeai"
+            label: <Text>DeepCLI account with subscription ·{" "}<Text dimColor={true}>Pro, Max, Team, or Enterprise</Text>{false && <Text>{"\n"}<Text color="warning">[ANT-ONLY]</Text>{" "}<Text dimColor={true}>Please use this option unless you need to login to a special org for accessing sensitive data (e.g. customer data, HIPI data) with the Console option</Text></Text>}{"\n"}</Text>,
+            value: "deepcliAi"
           };
           $[3] = t4;
         } else {
@@ -427,7 +427,7 @@ function OAuthStatusMessage(t0) {
         let t5;
         if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
           t5 = {
-            label: <Text>Anthropic Console account ·{" "}<Text dimColor={true}>API usage billing</Text>{"\n"}</Text>,
+            label: <Text>NexusAI Console account ·{" "}<Text dimColor={true}>API usage billing</Text>{"\n"}</Text>,
             value: "console"
           };
           $[4] = t5;
@@ -465,8 +465,8 @@ function OAuthStatusMessage(t0) {
                 setOAuthStatus({
                   state: "ready_to_start"
                 });
-                if (value_0 === "claudeai") {
-                  logEvent("tengu_oauth_claudeai_selected", {});
+                if (value_0 === "deepcliAi") {
+                  logEvent("tengu_oauth_deepcliAi_selected", {});
                   setLoginWithClaudeAi(true);
                 } else {
                   logEvent("tengu_oauth_console_selected", {});
@@ -504,7 +504,7 @@ function OAuthStatusMessage(t0) {
         let t2;
         let t3;
         if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
-          t2 = <Text>Claude Code supports Amazon Bedrock, Microsoft Foundry, and Vertex AI. Set the required environment variables, then restart Claude Code.</Text>;
+          t2 = <Text>DeepCLI supports Amazon Bedrock, Microsoft Foundry, and Vertex AI. Set the required environment variables, then restart DeepCLI.</Text>;
           t3 = <Text>If you are part of an enterprise organization, contact your administrator for setup instructions.</Text>;
           $[14] = t2;
           $[15] = t3;
@@ -521,21 +521,21 @@ function OAuthStatusMessage(t0) {
         }
         let t5;
         if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-          t5 = <Text>· Amazon Bedrock:{" "}<Link url="https://code.claude.com/docs/en/amazon-bedrock">https://code.claude.com/docs/en/amazon-bedrock</Link></Text>;
+          t5 = <Text>· Amazon Bedrock:{" "}<Link url="https://docs.deepcli.dev/docs/en/amazon-bedrock">https://docs.deepcli.dev/docs/en/amazon-bedrock</Link></Text>;
           $[17] = t5;
         } else {
           t5 = $[17];
         }
         let t6;
         if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
-          t6 = <Text>· Microsoft Foundry:{" "}<Link url="https://code.claude.com/docs/en/microsoft-foundry">https://code.claude.com/docs/en/microsoft-foundry</Link></Text>;
+          t6 = <Text>· Microsoft Foundry:{" "}<Link url="https://docs.deepcli.dev/docs/en/microsoft-foundry">https://docs.deepcli.dev/docs/en/microsoft-foundry</Link></Text>;
           $[18] = t6;
         } else {
           t6 = $[18];
         }
         let t7;
         if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
-          t7 = <Box flexDirection="column" marginTop={1}>{t4}{t5}{t6}<Text>· Vertex AI:{" "}<Link url="https://code.claude.com/docs/en/google-vertex-ai">https://code.claude.com/docs/en/google-vertex-ai</Link></Text></Box>;
+          t7 = <Box flexDirection="column" marginTop={1}>{t4}{t5}{t6}<Text>· Vertex AI:{" "}<Link url="https://docs.deepcli.dev/docs/en/google-vertex-ai">https://docs.deepcli.dev/docs/en/google-vertex-ai</Link></Text></Box>;
           $[19] = t7;
         } else {
           t7 = $[19];
@@ -598,7 +598,7 @@ function OAuthStatusMessage(t0) {
       {
         let t1;
         if ($[38] === Symbol.for("react.memo_cache_sentinel")) {
-          t1 = <Box flexDirection="column" gap={1}><Box><Spinner /><Text>Creating API key for Claude Code…</Text></Box></Box>;
+          t1 = <Box flexDirection="column" gap={1}><Box><Spinner /><Text>Creating API key for DeepCLI…</Text></Box></Box>;
           $[38] = t1;
         } else {
           t1 = $[38];

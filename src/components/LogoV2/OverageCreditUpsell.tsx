@@ -30,11 +30,7 @@ export function isEligibleForOverageCreditGrant(): boolean {
   return formatGrantAmount(info) !== null;
 }
 export function shouldShowOverageCreditUpsell(): boolean {
-  if (!isEligibleForOverageCreditGrant()) return false;
-  const config = getGlobalConfig();
-  if (config.hasVisitedExtraUsage) return false;
-  if ((config.overageCreditUpsellSeenCount ?? 0) >= MAX_IMPRESSIONS) return false;
-  return true;
+  return false;
 }
 
 /**

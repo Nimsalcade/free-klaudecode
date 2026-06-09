@@ -9,11 +9,11 @@ import {
 } from '../../utils/model/providers.js'
 
 const PROVIDER_ENV_VARS = [
-  'CLAUDE_CODE_USE_BEDROCK',
-  'CLAUDE_CODE_USE_VERTEX',
-  'CLAUDE_CODE_USE_FOUNDRY',
-  'CLAUDE_CODE_USE_OPENAI',
-  'CLAUDE_CODE_USE_LOCAL',
+  'DEEPCLI_USE_BEDROCK',
+  'DEEPCLI_USE_VERTEX',
+  'DEEPCLI_USE_FOUNDRY',
+  'DEEPCLI_USE_OPENAI',
+  'DEEPCLI_USE_LOCAL',
 ]
 
 function clearProviderEnv() {
@@ -37,9 +37,9 @@ describe('provider selection', () => {
     expect(providerBringsOwnCredentials()).toBe(false)
   })
 
-  test('CLAUDE_CODE_USE_LOCAL selects the local adapter with a fetch shim', () => {
+  test('DEEPCLI_USE_LOCAL selects the local adapter with a fetch shim', () => {
     clearProviderEnv()
-    process.env.CLAUDE_CODE_USE_LOCAL = '1'
+    process.env.DEEPCLI_USE_LOCAL = '1'
     const a = getProviderAdapter()
     expect(a.id).toBe('local')
     expect(a.isThirdParty).toBe(true)
@@ -51,7 +51,7 @@ describe('provider selection', () => {
 
   test('native-SDK providers expose no fetch adapter', () => {
     clearProviderEnv()
-    process.env.CLAUDE_CODE_USE_BEDROCK = '1'
+    process.env.DEEPCLI_USE_BEDROCK = '1'
     const a = getProviderAdapter()
     expect(a.id).toBe('bedrock')
     expect(a.createFetch()).toBeNull()
@@ -60,8 +60,8 @@ describe('provider selection', () => {
 
   test('provider precedence: bedrock wins over local', () => {
     clearProviderEnv()
-    process.env.CLAUDE_CODE_USE_BEDROCK = '1'
-    process.env.CLAUDE_CODE_USE_LOCAL = '1'
+    process.env.DEEPCLI_USE_BEDROCK = '1'
+    process.env.DEEPCLI_USE_LOCAL = '1'
     expect(getProviderAdapter().id).toBe('bedrock')
   })
 })
@@ -124,13 +124,13 @@ describe('registry-driven local fetch', () => {
       },
     })
     try {
-      process.env.CLAUDE_CODE_USE_LOCAL = '1'
-      process.env.CLAUDE_CODE_LOCAL_BASE_URL = `http://localhost:${server.port}/v1`
+      process.env.DEEPCLI_USE_LOCAL = '1'
+      process.env.DEEPCLI_LOCAL_BASE_URL = `http://localhost:${server.port}/v1`
       const fetchImpl = getProviderAdapter().createFetch()
       expect(fetchImpl).not.toBeNull()
       const res = await fetchImpl!('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'anthropic-version': '2023-06-01' },
+        headers: { 'nexusai-version': '2023-06-01' },
         body: JSON.stringify({
           model: 'x',
           stream: true,

@@ -57,7 +57,7 @@ function sortForMatching(models: ModelCapability[]): ModelCapability[] {
   )
 }
 
-// Keyed on cache path so tests that set CLAUDE_CONFIG_DIR get a fresh read
+// Keyed on cache path so tests that set DEEPCLI_CONFIG_DIR get a fresh read
 const loadCache = memoize(
   (path: string): ModelCapability[] | null => {
     try {
@@ -87,10 +87,10 @@ export async function refreshModelCapabilities(): Promise<void> {
   if (isEssentialTrafficOnly()) return
 
   try {
-    const anthropic = await getAnthropicClient({ maxRetries: 1 })
+    const nexusai = await getAnthropicClient({ maxRetries: 1 })
     const betas = isClaudeAISubscriber() ? [OAUTH_BETA_HEADER] : undefined
     const parsed: ModelCapability[] = []
-    for await (const entry of anthropic.models.list({ betas })) {
+    for await (const entry of nexusai.models.list({ betas })) {
       const result = ModelCapabilitySchema().safeParse(entry)
       if (result.success) parsed.push(result.data)
     }

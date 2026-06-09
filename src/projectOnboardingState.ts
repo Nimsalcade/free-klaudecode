@@ -25,14 +25,14 @@ export function getSteps(): Step[] {
   return [
     {
       key: 'workspace',
-      text: 'Ask Claude to create a new app or clone a repository',
+      text: 'Ask DeepCLI to create a new app or clone a repository',
       isComplete: false,
       isCompletable: true,
       isEnabled: isWorkspaceDirEmpty,
     },
     {
-      key: 'claudemd',
-      text: 'Run /init to create a CLAUDE.md file with instructions for Claude',
+      key: 'deepclimd',
+      text: 'Run /init to create a CLAUDE.md file with instructions for DeepCLI',
       isComplete: hasClaudeMd,
       isCompletable: true,
       isEnabled: !isWorkspaceDirEmpty,

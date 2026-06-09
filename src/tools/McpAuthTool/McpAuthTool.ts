@@ -86,7 +86,7 @@ export function createMcpAuthTool(
       // claude.ai connectors use a separate auth flow (handleClaudeAIAuth in
       // MCPRemoteServerMenu) that we don't invoke programmatically here —
       // just point the user at /mcp.
-      if (config.type === 'claudeai-proxy') {
+      if (config.type === 'deepcliAi-proxy') {
         return {
           data: {
             status: 'unsupported' as const,

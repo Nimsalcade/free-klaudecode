@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk'
+import type NexusAI from '@anthropic-ai/sdk'
 import type {
   BetaTool,
   BetaToolUnion,
@@ -95,8 +95,8 @@ const SWARM_FIELDS_BY_TOOL: Record<string, string[]> = {
  */
 function filterSwarmFieldsFromSchema(
   toolName: string,
-  schema: Anthropic.Tool.InputSchema,
-): Anthropic.Tool.InputSchema {
+  schema: NexusAI.Tool.InputSchema,
+): NexusAI.Tool.InputSchema {
   const fieldsToRemove = SWARM_FIELDS_BY_TOOL[toolName]
   if (!fieldsToRemove || fieldsToRemove.length === 0) {
     return schema
@@ -158,7 +158,7 @@ export async function toolToAPISchema(
       'inputJSONSchema' in tool && tool.inputJSONSchema
         ? tool.inputJSONSchema
         : zodToJsonSchema(tool.inputSchema)
-    ) as Anthropic.Tool.InputSchema
+    ) as NexusAI.Tool.InputSchema
 
     // Filter out swarm-related fields when swarms are not enabled
     // This ensures external non-EAP users don't see swarm features in the schema
@@ -195,12 +195,12 @@ export async function toolToAPISchema(
     // Without FGTS, the API buffers entire tool input parameters before sending
     // input_json_delta events, causing multi-minute hangs on large tool inputs.
     // Gated to direct api.anthropic.com: proxies (LiteLLM etc.) and Bedrock/Vertex
-    // with Claude 4.5 reject this field with 400. See GH#32742, PR #21729.
+    // with DeepCLI 4.5 reject this field with 400. See GH#32742, PR #21729.
     if (
       getAPIProvider() === 'firstParty' &&
       isFirstPartyAnthropicBaseUrl() &&
       (getFeatureValue_CACHED_MAY_BE_STALE('tengu_fgts', false) ||
-        isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING))
+        isEnvTruthy(process.env.DEEPCLI_ENABLE_FINE_GRAINED_TOOL_STREAMING))
     ) {
       base.eager_input_streaming = true
     }
@@ -229,7 +229,7 @@ export async function toolToAPISchema(
     schema.cache_control = options.cacheControl
   }
 
-  // CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS is the kill switch for beta API
+  // DEEPCLI_DISABLE_EXPERIMENTAL_BETAS is the kill switch for beta API
   // shapes. Proxy gateways (ANTHROPIC_BASE_URL → LiteLLM → Bedrock) reject
   // fields like defer_loading with "Extra inputs are not permitted". The gates
   // above each field are scattered and not all provider-aware, so this strips
@@ -239,8 +239,8 @@ export async function toolToAPISchema(
   // standard prompt caching (Bedrock/Vertex supported); the beta sub-fields
   // (scope, ttl) are already gated upstream by shouldIncludeFirstPartyOnlyBetas
   // which independently respects this kill switch.
-  // github.com/anthropics/claude-code/issues/20031
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)) {
+  // github.com/anthropics/deepcli-code/issues/20031
+  if (isEnvTruthy(process.env.DEEPCLI_DISABLE_EXPERIMENTAL_BETAS)) {
     const allowed = new Set([
       'name',
       'description',
@@ -270,7 +270,7 @@ function logStripOnce(stripped: string[]): void {
   if (loggedStrip) return
   loggedStrip = true
   logForDebugging(
-    `[betas] Stripped from tool schemas: [${stripped.join(', ')}] (CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1)`,
+    `[betas] Stripped from tool schemas: [${stripped.join(', ')}] (DEEPCLI_DISABLE_EXPERIMENTAL_BETAS=1)`,
   )
 }
 
@@ -336,7 +336,7 @@ export function splitSysPromptPrefix(
     for (const prompt of systemPrompt) {
       if (!prompt) continue
       if (prompt === SYSTEM_PROMPT_DYNAMIC_BOUNDARY) continue // Skip boundary
-      if (prompt.startsWith('x-anthropic-billing-header')) {
+      if (prompt.startsWith('x-nexusai-billing-header')) {
         attributionHeader = prompt
       } else if (CLI_SYSPROMPT_PREFIXES.has(prompt)) {
         systemPromptPrefix = prompt
@@ -373,7 +373,7 @@ export function splitSysPromptPrefix(
         const block = systemPrompt[i]
         if (!block || block === SYSTEM_PROMPT_DYNAMIC_BOUNDARY) continue
 
-        if (block.startsWith('x-anthropic-billing-header')) {
+        if (block.startsWith('x-nexusai-billing-header')) {
           attributionHeader = block
         } else if (CLI_SYSPROMPT_PREFIXES.has(block)) {
           systemPromptPrefix = block
@@ -415,7 +415,7 @@ export function splitSysPromptPrefix(
   for (const block of systemPrompt) {
     if (!block) continue
 
-    if (block.startsWith('x-anthropic-billing-header')) {
+    if (block.startsWith('x-nexusai-billing-header')) {
       attributionHeader = block
     } else if (CLI_SYSPROMPT_PREFIXES.has(block)) {
       systemPromptPrefix = block
@@ -594,12 +594,12 @@ export function normalizeToolInput<T extends Tool>(
       // Replace \\; with \; (commonly needed for find -exec commands)
       normalizedCommand = normalizedCommand.replace(/\\\\;/g, '\\;')
 
-      // Logging for commands that are only echoing a string. This is to help us understand how often  Claude talks via bash
+      // Logging for commands that are only echoing a string. This is to help us understand how often  DeepCLI talks via bash
       if (/^echo\s+["']?[^|&;><]*["']?$/i.test(normalizedCommand.trim())) {
         logEvent('tengu_bash_tool_simple_echo', {})
       }
 
-      // Check for run_in_background (may not exist in schema if CLAUDE_CODE_DISABLE_BACKGROUND_TASKS is set)
+      // Check for run_in_background (may not exist in schema if DEEPCLI_DISABLE_BACKGROUND_TASKS is set)
       const run_in_background =
         'run_in_background' in parsed ? parsed.run_in_background : undefined
 
@@ -623,7 +623,7 @@ export function normalizeToolInput<T extends Tool>(
       // Validated upstream, won't throw
       const parsedInput = FileEditTool.inputSchema.parse(input)
 
-      // This is a workaround for tokens claude can't see
+      // This is a workaround for tokens deepcli can't see
       const { file_path, edits } = normalizeFileEditInput({
         file_path: parsedInput.file_path,
         edits: [

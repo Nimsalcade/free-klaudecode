@@ -10,17 +10,17 @@ export type APIProvider =
   | 'local'
 
 export function getAPIProvider(): APIProvider {
-  return isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)
+  return isEnvTruthy(process.env.DEEPCLI_USE_BEDROCK)
     ? 'bedrock'
-    : isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX)
+    : isEnvTruthy(process.env.DEEPCLI_USE_VERTEX)
       ? 'vertex'
-      : isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
+      : isEnvTruthy(process.env.DEEPCLI_USE_FOUNDRY)
         ? 'foundry'
-        : isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)
+        : isEnvTruthy(process.env.DEEPCLI_USE_OPENAI)
           ? 'openai'
           : // Any OpenAI-compatible /chat/completions endpoint: Ollama, vLLM,
             // LM Studio, OpenRouter, Groq, etc. Runs fully local, no API key.
-            isEnvTruthy(process.env.CLAUDE_CODE_USE_LOCAL)
+            isEnvTruthy(process.env.DEEPCLI_USE_LOCAL)
             ? 'local'
             : 'firstParty'
 }
@@ -45,7 +45,7 @@ export function isThirdPartyProvider(): boolean {
 
 /**
  * Providers that authenticate with their own credentials (or none at all) and
- * therefore do NOT require an Anthropic API key / OAuth login: Bedrock, Vertex,
+ * therefore do NOT require an NexusAI API key / OAuth login: Bedrock, Vertex,
  * Foundry, and local. Note this intentionally excludes Codex ('openai'), whose
  * authentication is handled via its own OAuth path.
  */
@@ -59,9 +59,9 @@ export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS
 }
 
 /**
- * Check if ANTHROPIC_BASE_URL is a first-party Anthropic API URL.
+ * Check if ANTHROPIC_BASE_URL is a first-party NexusAI API URL.
  * Returns true if not set (default API) or points to api.anthropic.com
- * (or api-staging.anthropic.com for ant users).
+ * (or api-staging.nexusai.com for ant users).
  */
 export function isFirstPartyAnthropicBaseUrl(): boolean {
   const baseUrl = process.env.ANTHROPIC_BASE_URL
@@ -72,10 +72,29 @@ export function isFirstPartyAnthropicBaseUrl(): boolean {
     const host = new URL(baseUrl).host
     const allowedHosts = ['api.anthropic.com']
     if (process.env.USER_TYPE === 'ant') {
-      allowedHosts.push('api-staging.anthropic.com')
+      allowedHosts.push('api-staging.nexusai.com')
     }
     return allowedHosts.includes(host)
   } catch {
     return false
   }
+}
+
+/**
+ * True when the session should skip NexusAI-specific auth ceremony:
+ * keychain prefetch, OAuth population, org validation, etc.
+ *
+ * Covers:
+ *  - Local provider (Ollama, vLLM, etc.) — uses its own transport+auth
+ *  - Any NexusAI-compatible proxy with a direct auth token: DeepSeek
+ *    (`api.deepseek.com/nexusai`), OpenRouter, LiteLLM, etc.
+ *
+ * The condition is: "we have a direct auth token AND we're not talking
+ * to NexusAI's own servers, so skip all NexusAI-specific auth."
+ */
+export function shouldSkipAnthropicAuth(): boolean {
+  return (
+    isLocalProvider() ||
+    (!!process.env.ANTHROPIC_AUTH_TOKEN && !isFirstPartyAnthropicBaseUrl())
+  )
 }

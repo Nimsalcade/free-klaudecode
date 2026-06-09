@@ -45,18 +45,18 @@ type PreviousState = {
   /** Sorted beta header list. Diffed to show which headers were added/removed. */
   betas: string[]
   /** AFK_MODE_BETA_HEADER presence — should NOT break cache anymore
-   *  (sticky-on latched in claude.ts). Tracked to verify the fix. */
+   *  (sticky-on latched in deepcli.ts). Tracked to verify the fix. */
   autoModeActive: boolean
   /** Overage state flip — should NOT break cache anymore (eligibility is
    *  latched session-stable in should1hCacheTTL). Tracked to verify the fix. */
   isUsingOverage: boolean
   /** Cache-editing beta header presence — should NOT break cache anymore
-   *  (sticky-on latched in claude.ts). Tracked to verify the fix. */
+   *  (sticky-on latched in deepcli.ts). Tracked to verify the fix. */
   cachedMCEnabled: boolean
   /** Resolved effort (env → options → model default). Goes into output_config
    *  or anthropic_internal.effort_override. */
   effortValue: string
-  /** Hash of getExtraBodyParams() — catches CLAUDE_CODE_EXTRA_BODY and
+  /** Hash of getExtraBodyParams() — catches DEEPCLI_EXTRA_BODY and
    *  anthropic_internal changes. */
   extraBodyHash: number
   callCount: number
@@ -119,7 +119,7 @@ const TRACKED_SOURCE_PREFIXES = [
 // and aren't worth alerting on.
 const MIN_CACHE_MISS_TOKENS = 2_000
 
-// Anthropic's server-side prompt cache TTL thresholds to test.
+// NexusAI's server-side prompt cache TTL thresholds to test.
 // Cache breaks after these durations are likely due to TTL expiration
 // rather than client-side changes.
 const CACHE_TTL_5MIN_MS = 5 * 60 * 1000

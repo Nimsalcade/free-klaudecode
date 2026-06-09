@@ -1,4 +1,4 @@
-import type { Anthropic } from '@anthropic-ai/sdk'
+import type { NexusAI } from '@anthropic-ai/sdk'
 import type { BetaMessageParam as MessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 // @aws-sdk/client-bedrock-runtime is imported dynamically in countTokensWithBedrock()
 // to defer ~279KB of AWS SDK code until a Bedrock call is actually made
@@ -23,7 +23,7 @@ import {
 } from '../utils/model/model.js'
 import { jsonStringify } from '../utils/slowOperations.js'
 import { isToolReferenceBlock } from '../utils/toolSearch.js'
-import { getAPIMetadata, getExtraBodyParams } from './api/claude.js'
+import { getAPIMetadata, getExtraBodyParams } from './api/deepcli.js'
 import { getAnthropicClient } from './api/client.js'
 import { withTokenCountVCR } from './vcr.js'
 
@@ -148,7 +148,7 @@ export async function countMessagesTokensWithAPI(
       const containsThinking = hasThinkingBlocks(messages)
 
       if (getAPIProvider() === 'bedrock') {
-        // @anthropic-sdk/bedrock-sdk doesn't support countTokens currently
+        // @nexusai-sdk/bedrock-sdk doesn't support countTokens currently
         return countTokensWithBedrock({
           model: normalizeModelStringForAPI(model),
           messages,
@@ -158,7 +158,7 @@ export async function countMessagesTokensWithAPI(
         })
       }
 
-      const anthropic = await getAnthropicClient({
+      const nexusai = await getAnthropicClient({
         maxRetries: 1,
         model,
         source: 'count_tokens',
@@ -169,7 +169,7 @@ export async function countMessagesTokensWithAPI(
           ? betas.filter(b => VERTEX_COUNT_TOKENS_ALLOWED_BETAS.has(b))
           : betas
 
-      const response = await anthropic.beta.messages.countTokens({
+      const response = await nexusai.beta.messages.countTokens({
         model: normalizeModelStringForAPI(model),
         messages:
           // When we pass tools and no messages, we need to pass a dummy message
@@ -257,14 +257,14 @@ export async function countTokensViaHaikuFallback(
 
   // If we're on Vertex and using global region, always use Sonnet since Haiku is not available there.
   const isVertexGlobalEndpoint =
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) &&
+    isEnvTruthy(process.env.DEEPCLI_USE_VERTEX) &&
     getVertexRegionForModel(getSmallFastModel()) === 'global'
   // If we're on Bedrock with thinking blocks, use Sonnet since Haiku 3.5 doesn't support thinking
   const isBedrockWithThinking =
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK) && containsThinking
+    isEnvTruthy(process.env.DEEPCLI_USE_BEDROCK) && containsThinking
   // If we're on Vertex with thinking blocks, use Sonnet since Haiku 3.5 doesn't support thinking
   const isVertexWithThinking =
-    isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) && containsThinking
+    isEnvTruthy(process.env.DEEPCLI_USE_VERTEX) && containsThinking
   // Otherwise always use Haiku - Haiku 4.5 supports thinking blocks.
   // WARNING: if you change this to use a non-Haiku model, this request will fail in 1P unless it uses getCLISyspromptPrefix.
   // Note: We don't need Sonnet for tool_reference blocks because we strip them via
@@ -275,7 +275,7 @@ export async function countTokensViaHaikuFallback(
     isVertexGlobalEndpoint || isBedrockWithThinking || isVertexWithThinking
       ? getDefaultSonnetModel()
       : getSmallFastModel()
-  const anthropic = await getAnthropicClient({
+  const nexusai = await getAnthropicClient({
     maxRetries: 1,
     model,
     source: 'count_tokens',
@@ -299,7 +299,7 @@ export async function countTokensViaHaikuFallback(
       : betas
 
   // biome-ignore lint/plugin: token counting needs specialized parameters (thinking, betas) that sideQuery doesn't support
-  const response = await anthropic.beta.messages.create({
+  const response = await nexusai.beta.messages.create({
     model: normalizeModelStringForAPI(model),
     max_tokens: containsThinking ? TOKEN_COUNT_MAX_TOKENS : 1,
     messages: messagesToSend,
@@ -350,8 +350,8 @@ export function roughTokenCountEstimationForMessage(message: {
     return roughTokenCountEstimationForContent(
       message.message?.content as
         | string
-        | Array<Anthropic.ContentBlock>
-        | Array<Anthropic.ContentBlockParam>
+        | Array<NexusAI.ContentBlock>
+        | Array<NexusAI.ContentBlockParam>
         | undefined,
     )
   }
@@ -371,8 +371,8 @@ export function roughTokenCountEstimationForMessage(message: {
 function roughTokenCountEstimationForContent(
   content:
     | string
-    | Array<Anthropic.ContentBlock>
-    | Array<Anthropic.ContentBlockParam>
+    | Array<NexusAI.ContentBlock>
+    | Array<NexusAI.ContentBlockParam>
     | undefined,
 ): number {
   if (!content) {
@@ -389,7 +389,7 @@ function roughTokenCountEstimationForContent(
 }
 
 function roughTokenCountEstimationForBlock(
-  block: string | Anthropic.ContentBlock | Anthropic.ContentBlockParam,
+  block: string | NexusAI.ContentBlock | NexusAI.ContentBlockParam,
 ): number {
   if (typeof block === 'string') {
     return roughTokenCountEstimation(block)
@@ -398,7 +398,7 @@ function roughTokenCountEstimationForBlock(
     return roughTokenCountEstimation(block.text)
   }
   if (block.type === 'image' || block.type === 'document') {
-    // https://platform.claude.com/docs/en/build-with-claude/vision#calculate-image-costs
+    // https://platform.deepcli.com/docs/en/build-with-deepcli/vision#calculate-image-costs
     // tokens = (width px * height px)/750
     // Images are resized to max 2000x2000 (5333 tokens). Use a conservative
     // estimate that matches microCompact's IMAGE_MAX_TOKEN_SIZE to avoid

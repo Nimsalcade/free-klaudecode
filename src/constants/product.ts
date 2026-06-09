@@ -1,9 +1,9 @@
-export const PRODUCT_URL = 'https://claude.com/claude-code'
+export const PRODUCT_URL = 'https://deepcli.com/deepcli-code'
 
-// Claude Code Remote session URLs
+// DeepCLI Remote session URLs
 export const CLAUDE_AI_BASE_URL = 'https://claude.ai'
-export const CLAUDE_AI_STAGING_BASE_URL = 'https://claude-ai.staging.ant.dev'
-export const CLAUDE_AI_LOCAL_BASE_URL = 'http://localhost:4000'
+export const DEEPCLI_AI_STAGING_BASE_URL = 'https://deepcli-ai.staging.ant.dev'
+export const DEEPCLI_AI_LOCAL_BASE_URL = 'http://localhost:4000'
 
 /**
  * Determine if we're in a staging environment for remote sessions.
@@ -34,19 +34,19 @@ export function isRemoteSessionLocal(
 }
 
 /**
- * Get the base URL for Claude AI based on environment.
+ * Get the base URL for DeepCLI AI based on environment.
  */
 export function getClaudeAiBaseUrl(
   sessionId?: string,
   ingressUrl?: string,
 ): string {
   if (isRemoteSessionLocal(sessionId, ingressUrl)) {
-    return CLAUDE_AI_LOCAL_BASE_URL
+    return DEEPCLI_AI_LOCAL_BASE_URL
   }
   if (isRemoteSessionStaging(sessionId, ingressUrl)) {
-    return CLAUDE_AI_STAGING_BASE_URL
+    return DEEPCLI_AI_STAGING_BASE_URL
   }
-  return CLAUDE_AI_BASE_URL
+  return DEEPCLI_AI_BASE_URL
 }
 
 /**

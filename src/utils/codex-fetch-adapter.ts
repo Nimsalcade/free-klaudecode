@@ -1,6 +1,6 @@
 /**
- * OpenAI Codex API adapter for Claude Code
- * Provides compatibility layer between Claude's API expectations and OpenAI's Codex API
+ * OpenAI Codex API adapter for DeepCLI
+ * Provides compatibility layer between DeepCLI's API expectations and OpenAI's Codex API
  */
 
 import type { Message } from '../types/message.js'
@@ -44,7 +44,7 @@ interface OpenAIResponse {
 }
 
 /**
- * Convert Claude Code message format to OpenAI format
+ * Convert DeepCLI message format to OpenAI format
  */
 function convertToOpenAIMessage(message: Message): OpenAIMessage {
   if (typeof message.content === 'string') {
@@ -64,7 +64,7 @@ function convertToOpenAIMessage(message: Message): OpenAIMessage {
         text: item.text,
       })
     } else if (item.type === 'image') {
-      // Convert Anthropic base64 image schema to OpenAI format
+      // Convert NexusAI base64 image schema to OpenAI format
       content.push({
         type: 'image_url',
         image_url: {
@@ -133,7 +133,7 @@ export async function fetchCodexResponse(
 }
 
 /**
- * Convert OpenAI response to Claude Code format
+ * Convert OpenAI response to DeepCLI format
  */
 export function convertFromOpenAIResponse(response: OpenAIResponse): {
   content: string

@@ -1,10 +1,10 @@
 /**
  * Files API client for managing files
  *
- * This module provides functionality to download and upload files to Anthropic Public Files API.
- * Used by the Claude Code agent to download file attachments at session startup.
+ * This module provides functionality to download and upload files to NexusAI Public Files API.
+ * Used by the DeepCLI agent to download file attachments at session startup.
  *
- * API Reference: https://docs.anthropic.com/en/api/files-content
+ * API Reference: https://docs.nexusai.com/en/api/files-content
  */
 
 import axios from 'axios'
@@ -32,7 +32,7 @@ const ANTHROPIC_VERSION = '2023-06-01'
 function getDefaultApiBaseUrl(): string {
   return (
     process.env.ANTHROPIC_BASE_URL ||
-    process.env.CLAUDE_CODE_API_BASE_URL ||
+    process.env.DEEPCLI_API_BASE_URL ||
     'https://api.anthropic.com'
   )
 }
@@ -123,7 +123,7 @@ async function retryWithBackoff<T>(
 }
 
 /**
- * Downloads a single file from the Anthropic Public Files API
+ * Downloads a single file from the NexusAI Public Files API
  *
  * @param fileId - The file ID (e.g., "file_011CNha8iCJcU1wXNR6q4V8w")
  * @param config - Files API configuration
@@ -138,8 +138,8 @@ export async function downloadFile(
 
   const headers = {
     Authorization: `Bearer ${config.oauthToken}`,
-    'anthropic-version': ANTHROPIC_VERSION,
-    'anthropic-beta': FILES_API_BETA_HEADER,
+    'nexusai-version': ANTHROPIC_VERSION,
+    'nexusai-beta': FILES_API_BETA_HEADER,
   }
 
   logDebug(`Downloading file ${fileId} from ${url}`)
@@ -386,8 +386,8 @@ export async function uploadFile(
 
   const headers = {
     Authorization: `Bearer ${config.oauthToken}`,
-    'anthropic-version': ANTHROPIC_VERSION,
-    'anthropic-beta': FILES_API_BETA_HEADER,
+    'nexusai-version': ANTHROPIC_VERSION,
+    'nexusai-beta': FILES_API_BETA_HEADER,
   }
 
   logDebug(`Uploading file ${filePath} as ${relativePath}`)
@@ -621,8 +621,8 @@ export async function listFilesCreatedAfter(
   const baseUrl = config.baseUrl || getDefaultApiBaseUrl()
   const headers = {
     Authorization: `Bearer ${config.oauthToken}`,
-    'anthropic-version': ANTHROPIC_VERSION,
-    'anthropic-beta': FILES_API_BETA_HEADER,
+    'nexusai-version': ANTHROPIC_VERSION,
+    'nexusai-beta': FILES_API_BETA_HEADER,
   }
 
   logDebug(`Listing files created after ${afterCreatedAt}`)

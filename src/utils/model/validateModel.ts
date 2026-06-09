@@ -28,8 +28,8 @@ export async function validateModel(
   }
 
   // Local / OpenAI-compatible provider: the model name is whatever the local
-  // server (Ollama, vLLM, LM Studio, ...) accepts — it is not an Anthropic
-  // model, so skip the allowlist and the Anthropic validation API call.
+  // server (Ollama, vLLM, LM Studio, ...) accepts — it is not an NexusAI
+  // model, so skip the allowlist and the NexusAI validation API call.
   if (getAPIProvider() === 'local') {
     return { valid: true }
   }
@@ -48,7 +48,7 @@ export async function validateModel(
     return { valid: true }
   }
 
-  // Check if it's a known Codex/OpenAI model (skip Anthropic API validation)
+  // Check if it's a known Codex/OpenAI model (skip NexusAI API validation)
   const { isCodexSubscriber } = await import('../auth.js')
   const { isCodexModel } = await import('../../services/api/codex-fetch-adapter.js')
   if (isCodexSubscriber() && isCodexModel(normalizedModel)) {

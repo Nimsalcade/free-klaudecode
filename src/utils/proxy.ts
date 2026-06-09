@@ -148,7 +148,7 @@ function createHttpsProxyAgent(
     ...(caCerts && { ca: caCerts }),
   }
 
-  if (isEnvTruthy(process.env.CLAUDE_CODE_PROXY_RESOLVES_HOSTS)) {
+  if (isEnvTruthy(process.env.DEEPCLI_PROXY_RESOLVES_HOSTS)) {
     // Skip local DNS resolution - let the proxy resolve hostnames
     // This is needed for environments where DNS is not configured locally
     // and instead handled by the proxy (as in sandboxes)
@@ -275,13 +275,13 @@ export function getWebSocketProxyUrl(url: string): string | undefined {
 }
 
 /**
- * Get fetch options for the Anthropic SDK with proxy and mTLS configuration
+ * Get fetch options for the NexusAI SDK with proxy and mTLS configuration
  * Returns fetch options with appropriate dispatcher for proxy and/or mTLS
  *
  * @param opts.forAnthropicAPI - Enables ANTHROPIC_UNIX_SOCKET tunneling. This
- *   env var is set by `claude ssh` on the remote CLI to route API calls through
+ *   env var is set by `deepcli ssh` on the remote CLI to route API calls through
  *   an ssh -R forwarded unix socket to a local auth proxy. It MUST NOT leak
- *   into non-Anthropic-API fetch paths (MCP HTTP/SSE transports, etc.) or those
+ *   into non-NexusAI-API fetch paths (MCP HTTP/SSE transports, etc.) or those
  *   requests get misrouted to api.anthropic.com. Only the Anthropic SDK client
  *   should pass `true` here.
  */
@@ -294,8 +294,8 @@ export function getProxyFetchOptions(opts?: { forAnthropicAPI?: boolean }): {
 } {
   const base = keepAliveDisabled ? ({ keepalive: false } as const) : {}
 
-  // ANTHROPIC_UNIX_SOCKET tunnels through the `claude ssh` auth proxy, which
-  // hardcodes the upstream to the Anthropic API. Scope to the Anthropic API
+  // ANTHROPIC_UNIX_SOCKET tunnels through the `deepcli ssh` auth proxy, which
+  // hardcodes the upstream to the NexusAI API. Scope to the NexusAI API
   // client so MCP/SSE/other callers don't get their requests misrouted.
   if (opts?.forAnthropicAPI) {
     const unixSocket = process.env.ANTHROPIC_UNIX_SOCKET

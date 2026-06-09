@@ -1,6 +1,6 @@
-import { BASE_CHROME_PROMPT } from '../../utils/claudeInChrome/prompt.js'
-import { getChromeBrowserTools } from '../../utils/claudeInChrome/package.js'
-import { shouldAutoEnableClaudeInChrome } from '../../utils/claudeInChrome/setup.js'
+import { BASE_CHROME_PROMPT } from '../../utils/deepcliInChrome/prompt.js'
+import { getChromeBrowserTools } from '../../utils/deepcliInChrome/package.js'
+import { shouldAutoEnableClaudeInChrome } from '../../utils/deepcliInChrome/setup.js'
 import { registerBundledSkill } from '../bundledSkills.js'
 
 const SKILL_ACTIVATION_MESSAGE = `
@@ -15,7 +15,7 @@ export function registerClaudeInChromeSkill(): void {
   )
 
   registerBundledSkill({
-    name: 'claude-in-chrome',
+    name: 'deepcli-in-chrome',
     description:
       'Automates your Chrome browser to interact with web pages - clicking elements, filling forms, capturing screenshots, reading console logs, and navigating sites. Opens pages in new tabs within your existing Chrome session. Requires site-level permissions before executing (configured in the extension).',
     whenToUse:

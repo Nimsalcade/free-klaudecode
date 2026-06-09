@@ -1,9 +1,9 @@
 /**
  * Local / OpenAI-compatible Fetch Adapter
  *
- * Intercepts fetch calls from the Anthropic SDK and routes them to any
+ * Intercepts fetch calls from the NexusAI SDK and routes them to any
  * OpenAI-compatible `/chat/completions` endpoint, translating between the
- * Anthropic Messages API format and the OpenAI Chat Completions format.
+ * NexusAI Messages API format and the OpenAI Chat Completions format.
  *
  * This is what unlocks "run any model, no API key, no callbacks home":
  *   - Ollama          (http://localhost:11434/v1)
@@ -18,17 +18,17 @@
  *
  * Supports:
  *   - Text messages (user/assistant) and system prompts
- *   - Tool definitions (Anthropic input_schema -> OpenAI function parameters)
+ *   - Tool definitions (NexusAI input_schema -> OpenAI function parameters)
  *   - Tool use round-trips (tool_use <-> tool_calls, tool_result <-> role:tool)
- *   - Vision (Anthropic base64 image -> OpenAI image_url data URI)
+ *   - Vision (NexusAI base64 image -> OpenAI image_url data URI)
  *   - Both streaming (SSE) and non-streaming responses
  *
  * Configuration (env):
- *   CLAUDE_CODE_USE_LOCAL=1         enable this provider
- *   CLAUDE_CODE_LOCAL_BASE_URL=...  OpenAI-compatible base URL
+ *   DEEPCLI_USE_LOCAL=1         enable this provider
+ *   DEEPCLI_LOCAL_BASE_URL=...  OpenAI-compatible base URL
  *                                   (default: http://localhost:11434/v1 for Ollama)
- *   CLAUDE_CODE_LOCAL_MODEL=...     model name to send (overrides the request model)
- *   CLAUDE_CODE_LOCAL_API_KEY=...   optional bearer token (most local servers ignore it)
+ *   DEEPCLI_LOCAL_MODEL=...     model name to send (overrides the request model)
+ *   DEEPCLI_LOCAL_API_KEY=...   optional bearer token (most local servers ignore it)
  */
 
 import { logForDebugging } from '../../utils/debug.js'
@@ -47,10 +47,10 @@ export interface LocalProviderConfig {
  */
 export function getLocalProviderConfig(): LocalProviderConfig {
   const baseURL = (
-    process.env.CLAUDE_CODE_LOCAL_BASE_URL || 'http://localhost:11434/v1'
+    process.env.DEEPCLI_LOCAL_BASE_URL || 'http://localhost:11434/v1'
   ).replace(/\/+$/, '')
-  const apiKey = process.env.CLAUDE_CODE_LOCAL_API_KEY || 'not-needed'
-  const model = process.env.CLAUDE_CODE_LOCAL_MODEL || null
+  const apiKey = process.env.DEEPCLI_LOCAL_API_KEY || 'not-needed'
+  const model = process.env.DEEPCLI_LOCAL_MODEL || null
   return { baseURL, apiKey, model }
 }
 
@@ -81,7 +81,7 @@ interface AnthropicTool {
 
 type OpenAIMessage = Record<string, unknown>
 
-// ── Tool translation: Anthropic -> OpenAI ───────────────────────────
+// ── Tool translation: NexusAI -> OpenAI ───────────────────────────
 
 function translateTools(
   anthropicTools: AnthropicTool[],
@@ -96,9 +96,9 @@ function translateTools(
   }))
 }
 
-// ── Message translation: Anthropic -> OpenAI chat messages ──────────
+// ── Message translation: NexusAI -> OpenAI chat messages ──────────
 
-/** Flattens an Anthropic tool_result content payload into plain text. */
+/** Flattens an NexusAI tool_result content payload into plain text. */
 function extractToolResultText(
   content: string | AnthropicContentBlock[] | undefined,
 ): string {
@@ -333,7 +333,7 @@ function translateNonStreamingResponse(
   })
 }
 
-// ── Streaming response translation: OpenAI SSE -> Anthropic SSE ──────
+// ── Streaming response translation: OpenAI SSE -> NexusAI SSE ──────
 
 async function translateStreamToAnthropic(
   openaiResponse: Response,
@@ -363,11 +363,11 @@ async function translateStreamToAnthropic(
       })
       send('ping', { type: 'ping' })
 
-      // Block bookkeeping. Anthropic requires ordered, explicitly opened and
+      // Block bookkeeping. NexusAI requires ordered, explicitly opened and
       // closed content blocks. We allocate indices lazily in first-seen order.
       let nextIndex = 0
       let textBlockIndex = -1 // -1 = not open
-      // openai tool_call index -> anthropic block state
+      // openai tool_call index -> nexusai block state
       const toolBlocks = new Map<
         number,
         { index: number; closed: boolean }
@@ -551,10 +551,10 @@ async function translateStreamToAnthropic(
 // ── Main fetch interceptor ──────────────────────────────────────────
 
 /**
- * Creates a fetch function that intercepts Anthropic Messages API calls and
+ * Creates a fetch function that intercepts NexusAI Messages API calls and
  * routes them to an OpenAI-compatible `/chat/completions` endpoint.
  *
- * Pass the result as the `fetch` option of the Anthropic SDK client.
+ * Pass the result as the `fetch` option of the NexusAI SDK client.
  */
 export function createLocalFetch(
   config: LocalProviderConfig = getLocalProviderConfig(),
@@ -616,7 +616,7 @@ export function createLocalFetch(
           type: 'error',
           error: {
             type: 'api_error',
-            message: `Local model server unreachable at ${config.baseURL} (${message}). Is it running? Set CLAUDE_CODE_LOCAL_BASE_URL to point at your server.`,
+            message: `Local model server unreachable at ${config.baseURL} (${message}). Is it running? Set DEEPCLI_LOCAL_BASE_URL to point at your server.`,
           },
         }),
         { status: 502, headers: { 'Content-Type': 'application/json' } },

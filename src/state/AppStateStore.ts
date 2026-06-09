@@ -116,7 +116,7 @@ export type AppState = DeepImmutable<{
   kairosEnabled: boolean
   // Remote session URL for --remote mode (shown in footer indicator)
   remoteSessionUrl: string | undefined
-  // Remote session WS state (`claude assistant` viewer). 'connected' means the
+  // Remote session WS state (`deepcli assistant` viewer). 'connected' means the
   // live event stream is open; 'reconnecting' = transient WS drop, backoff
   // in progress; 'disconnected' = permanent close or reconnects exhausted.
   remoteConnectionStatus:
@@ -124,7 +124,7 @@ export type AppState = DeepImmutable<{
     | 'connected'
     | 'reconnecting'
     | 'disconnected'
-  // `claude assistant`: count of background tasks (Agent calls, teammates,
+  // `deepcli assistant`: count of background tasks (Agent calls, teammates,
   // workflows) running inside the REMOTE daemon child. Event-sourced from
   // system/task_started and system/task_notification on the WS. The local
   // AppState.tasks is always empty in viewer mode — the tasks live in a
@@ -155,6 +155,8 @@ export type AppState = DeepImmutable<{
   replBridgeInitialName: string | undefined
   // Always-on bridge: first-time remote dialog pending (set by /remote-control command)
   showRemoteCallout: boolean
+  // System Dashboard overlay toggled by 'd' key from LogoV2 view
+  dashboardVisible: boolean
 }> & {
   // Unified task state - excluded from DeepImmutable because TaskState contains function types
   tasks: { [taskId: string]: TaskState }
@@ -565,5 +567,6 @@ export function getDefaultAppState(): AppState {
     effortValue: undefined,
     activeOverlays: new Set<string>(),
     fastMode: false,
+    dashboardVisible: false,
   }
 }

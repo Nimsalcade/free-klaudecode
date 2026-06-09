@@ -43,7 +43,7 @@ import {
   getMemoryFilesForNestedDirectory,
   getConditionalRulesForCwdLevelDirectory,
   type MemoryFileInfo,
-} from './claudemd.js'
+} from './deepclimd.js'
 import { dirname, parse, relative, resolve } from 'path'
 import { getCwd } from 'src/utils/cwd.js'
 import { getViewedTeammateTask } from '../state/selectors.js'
@@ -172,8 +172,8 @@ import {
   isMcpInstructionsDeltaEnabled,
   type ClientSideInstruction,
 } from './mcpInstructionsDelta.js'
-import { CLAUDE_IN_CHROME_MCP_SERVER_NAME } from './claudeInChrome/common.js'
-import { CHROME_TOOL_SEARCH_INSTRUCTIONS } from './claudeInChrome/prompt.js'
+import { DEEPCLI_IN_CHROME_MCP_SERVER_NAME } from './deepcliInChrome/common.js'
+import { CHROME_TOOL_SEARCH_INSTRUCTIONS } from './deepcliInChrome/prompt.js'
 import type { MCPServerConnection } from '../services/mcp/types.js'
 import type {
   HookEvent,
@@ -750,8 +750,8 @@ export async function getAttachments(
   options?: { skipSkillDiscovery?: boolean },
 ): Promise<Attachment[]> {
   if (
-    isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)
+    isEnvTruthy(process.env.DEEPCLI_DISABLE_ATTACHMENTS) ||
+    isEnvTruthy(process.env.DEEPCLI_SIMPLE)
   ) {
     // query.ts:removeFromQueue dequeues these unconditionally after
     // getAttachmentMessages runs — returning [] here silently drops them.
@@ -1574,7 +1574,7 @@ export function getMcpInstructionsDeltaAttachment(
     isToolSearchToolAvailable(tools)
   ) {
     clientSide.push({
-      serverName: CLAUDE_IN_CHROME_MCP_SERVER_NAME,
+      serverName: DEEPCLI_IN_CHROME_MCP_SERVER_NAME,
       block: CHROME_TOOL_SEARCH_INSTRUCTIONS,
     })
   }
@@ -2619,7 +2619,7 @@ export function resetSentSkillNames(): void {
  * on --resume when a skill_listing attachment already exists in the
  * transcript.
  *
- * `sentSkillNames` is module-scope — process-local. Each `claude -p` spawn
+ * `sentSkillNames` is module-scope — process-local. Each `deepcli -p` spawn
  * starts with an empty Map, so without this every resume re-injects the
  * full ~600-token listing even though it's already in the conversation from
  * the prior process. Shows up on every --resume; particularly loud for
@@ -2641,7 +2641,7 @@ let suppressNext = false
 const FILTERED_LISTING_MAX = 30
 
 /**
- * Filter skills to bundled (Anthropic-curated) + MCP (user-connected) only.
+ * Filter skills to bundled (NexusAI-curated) + MCP (user-connected) only.
  * Used when skill-search is enabled to resolve the turn-0 gap for subagents:
  * these sources are small, intent-signaled, and won't hit the truncation budget.
  * User/project/plugin skills (the long tail — 200+) go through discovery instead.
@@ -3519,7 +3519,7 @@ async function getAsyncHookResponseAttachments(): Promise<Attachment[]> {
 
 /**
  * Get teammate mailbox attachments for agent swarm communication
- * Teammates are independent Claude Code sessions running in parallel (swarms),
+ * Teammates are independent DeepCLI sessions running in parallel (swarms),
  * not parent-child subagent relationships.
  *
  * This function checks two sources for messages:
@@ -3808,7 +3808,7 @@ function getTokenUsageAttachment(
   messages: Message[],
   model: string,
 ): Attachment[] {
-  if (!isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_TOKEN_USAGE_ATTACHMENT)) {
+  if (!isEnvTruthy(process.env.DEEPCLI_ENABLE_TOKEN_USAGE_ATTACHMENT)) {
     return []
   }
 
@@ -3897,7 +3897,7 @@ async function getVerifyPlanReminderAttachment(
 ): Promise<Attachment[]> {
   if (
     process.env.USER_TYPE !== 'ant' ||
-    !isEnvTruthy(process.env.CLAUDE_CODE_VERIFY_PLAN)
+    !isEnvTruthy(process.env.DEEPCLI_VERIFY_PLAN)
   ) {
     return []
   }

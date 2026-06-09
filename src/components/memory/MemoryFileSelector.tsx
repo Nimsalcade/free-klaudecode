@@ -16,7 +16,7 @@ import { readLastConsolidatedAt } from '../../services/autoDream/consolidationLo
 import { useAppState } from '../../state/AppState.js';
 import { getAgentMemoryDir } from '../../tools/AgentTool/agentMemory.js';
 import { openPath } from '../../utils/browser.js';
-import { getMemoryFiles, type MemoryFileInfo } from '../../utils/claudemd.js';
+import { getMemoryFiles, type MemoryFileInfo } from '../../utils/deepclimd.js';
 import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
 import { getDisplayPath } from '../../utils/file.js';
 import { formatRelativeTimeAgo } from '../../utils/format.js';
@@ -87,7 +87,7 @@ export function MemoryFileSelector(t0) {
     let description;
     const isGit = projectIsInGitRepo(getOriginalCwd());
     if (file.type === "User" && !file.isNested) {
-      description = "Saved in ~/.claude/CLAUDE.md";
+      description = "Saved in ~/.deepcli/CLAUDE.md";
     } else {
       if (file.type === "Project" && !file.isNested && file.path === projectMemoryPath) {
         description = `${isGit ? "Checked in at" : "Saved in"} ./CLAUDE.md`;

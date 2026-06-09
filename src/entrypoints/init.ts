@@ -22,6 +22,7 @@ import { detectCurrentRepository } from '../utils/detectRepository.js'
 import { logForDiagnosticsNoPII } from '../utils/diagLogs.js'
 import { initJetBrainsDetection } from '../utils/envDynamic.js'
 import { isEnvTruthy } from '../utils/envUtils.js'
+import { shouldSkipAnthropicAuth } from '../utils/model/providers.js'
 import { ConfigParseError } from '../utils/errors.js'
 // showInvalidConfigDialog is dynamically imported in the error path to avoid loading React at init
 import {
@@ -74,7 +75,12 @@ export const init = memoize(async (): Promise<void> => {
 
     // Populate OAuth account info if it is not already cached in config. This is needed since the
     // OAuth account info may not be populated when logging in through the VSCode extension.
-    void populateOAuthAccountInfoIfNeeded()
+    // Local provider / non-NexusAI proxy: skip — uses its own auth and
+    // never touches NexusAI OAuth tokens. This can trigger keychain reads
+    // that hang under isolated HOME.
+    if (!shouldSkipAnthropicAuth()) {
+      void populateOAuthAccountInfoIfNeeded()
+    }
     profileCheckpoint('init_after_oauth_populate')
 
     // Initialize JetBrains IDE detection asynchronously (populates cache for later sync access)
@@ -117,7 +123,7 @@ export const init = memoize(async (): Promise<void> => {
     logForDebugging('[init] configureGlobalAgents complete')
     profileCheckpoint('init_network_configured')
 
-    // Preconnect to the Anthropic API — overlap TCP+TLS handshake
+    // Preconnect to the NexusAI API — overlap TCP+TLS handshake
     // (~100-200ms) with the ~100ms of action-handler work before the API
     // request. After CA certs + proxy agents are configured so the warmed
     // connection uses the right transport. Fire-and-forget; skipped for
@@ -127,11 +133,11 @@ export const init = memoize(async (): Promise<void> => {
 
     // CCR upstreamproxy: start the local CONNECT relay so agent subprocesses
     // can reach org-configured upstreams with credential injection. Gated on
-    // CLAUDE_CODE_REMOTE + GrowthBook; fail-open on any error. Lazy import so
+    // DEEPCLI_REMOTE + GrowthBook; fail-open on any error. Lazy import so
     // non-CCR startups don't pay the module load. The getUpstreamProxyEnv
     // function is registered with subprocessEnv.ts so subprocess spawning can
     // inject proxy vars without a static import of the upstreamproxy module.
-    if (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE)) {
+    if (isEnvTruthy(process.env.DEEPCLI_REMOTE)) {
       try {
         const { initUpstreamProxy, getUpstreamProxyEnv } = await import(
           '../upstreamproxy/upstreamproxy.js'

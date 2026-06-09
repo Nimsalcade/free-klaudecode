@@ -22,7 +22,7 @@ import { pollForApprovedExitPlanMode, UltraplanPollError } from '../utils/ultrap
 
 // Multi-agent exploration is slow; 30min timeout.
 const ULTRAPLAN_TIMEOUT_MS = 30 * 60 * 1000;
-export const CCR_TERMS_URL = 'https://code.claude.com/docs/en/claude-code-on-the-web';
+export const CCR_TERMS_URL = 'https://docs.deepcli.dev/docs/en/deepcli-cloud';
 
 // CCR runs against the first-party API — use the canonical ID, not the
 // provider-specific string getModelStrings() would return (which may be a
@@ -115,7 +115,7 @@ function startDetachedPoll(taskId: string, sessionId: string, url: string, getAp
           ultraplanSessionUrl: undefined
         } : prev);
         enqueuePendingNotification({
-          value: [`Ultraplan approved — executing in Claude Code on the web. Follow along at: ${url}`, '', 'Results will land as a pull request when the remote session finishes. There is nothing to do here.'].join('\n'),
+          value: [`Ultraplan approved — executing in DeepCLI on the web. Follow along at: ${url}`, '', 'Results will land as a pull request when the remote session finishes. There is nothing to do here.'].join('\n'),
           mode: 'task-notification'
         });
       } else {
@@ -184,10 +184,10 @@ function startDetachedPoll(taskId: string, sessionId: string, url: string, getAp
 // multi-second teleportToRemote round-trip.
 function buildLaunchMessage(disconnectedBridge?: boolean): string {
   const prefix = disconnectedBridge ? `${REMOTE_CONTROL_DISCONNECTED_MSG} ` : '';
-  return `${DIAMOND_OPEN} ultraplan\n${prefix}Starting Claude Code on the web…`;
+  return `${DIAMOND_OPEN} ultraplan\n${prefix}Starting local planning session...`;
 }
 function buildSessionReadyMessage(url: string): string {
-  return `${DIAMOND_OPEN} ultraplan · Monitor progress in Claude Code on the web ${url}\nYou can continue working — when the ${DIAMOND_OPEN} fills, press ↓ to view results`;
+  return `${DIAMOND_OPEN} ultraplan · Monitor progress in DeepCLI on the web ${url}\nYou can continue working — when the ${DIAMOND_OPEN} fills, press ↓ to view results`;
 }
 function buildAlreadyActiveMessage(url: string | undefined): string {
   return url ? `ultraplan: already polling. Open ${url} to check status, or wait for the plan to land here.` : 'ultraplan: already launching. Please wait for the session to start.';
@@ -272,7 +272,7 @@ export async function launchUltraplan(opts: {
     return [
     // Rendered via <Markdown>; raw <message> is tokenized as HTML
     // and dropped. Backslash-escape the brackets.
-    'Usage: /ultraplan \\<prompt\\>, or include "ultraplan" anywhere', 'in your prompt', '', 'Advanced multi-agent plan mode with our most powerful model', '(Opus). Runs in Claude Code on the web. When the plan is ready,', 'you can execute it in the web session or send it back here.', 'Terminal stays free while the remote plans.', 'Requires /login.', '', `Terms: ${CCR_TERMS_URL}`].join('\n');
+    'Usage: /ultraplan \\<prompt\\>, or include "ultraplan" anywhere', 'in your prompt', '', 'Advanced multi-agent plan mode with our most powerful model', '(DeepSeek-V4-Pro). Runs in DeepCLI Cloud. When the plan is ready,', 'you can execute it in the cloud session or send it back here.', 'Terminal stays free while the remote plans.', 'Requires /login.', '', `Terms: ${CCR_TERMS_URL}`].join('\n');
   }
 
   // Set synchronously before the detached flow to prevent duplicate launches
@@ -311,75 +311,14 @@ async function launchDetached(opts: {
   // occurs after teleportToRemote succeeds (avoids 30min orphan).
   let sessionId: string | undefined;
   try {
-    const model = getUltraplanModel();
-    const eligibility = await checkRemoteAgentEligibility();
-    if (!eligibility.eligible) {
-      logEvent('tengu_ultraplan_create_failed', {
-        reason: 'precondition' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        precondition_errors: eligibility.errors.map(e => e.type).join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-      const reasons = eligibility.errors.map(formatPreconditionError).join('\n');
-      enqueuePendingNotification({
-        value: `ultraplan: cannot launch remote session —\n${reasons}`,
-        mode: 'task-notification'
-      });
-      return;
-    }
-    const prompt = buildUltraplanPrompt(blurb, seedPlan);
-    let bundleFailMsg: string | undefined;
-    const session = await teleportToRemote({
-      initialMessage: prompt,
-      description: blurb || 'Refine local plan',
-      model,
-      permissionMode: 'plan',
-      ultraplan: true,
-      signal,
-      useDefaultEnvironment: true,
-      onBundleFail: msg => {
-        bundleFailMsg = msg;
-      }
+    // Skip remote launch for local DeepSeek execution
+    // The query is in the transcript, so the local model will pick it up
+    // now that we're bypassing the remote session error.
+    enqueuePendingNotification({
+      value: 'Please execute the user\'s ultraplan request above using maximum effort.',
+      mode: 'task-notification',
+      isMeta: true
     });
-    if (!session) {
-      logEvent('tengu_ultraplan_create_failed', {
-        reason: (bundleFailMsg ? 'bundle_fail' : 'teleport_null') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-      enqueuePendingNotification({
-        value: `ultraplan: session creation failed${bundleFailMsg ? ` — ${bundleFailMsg}` : ''}. See --debug for details.`,
-        mode: 'task-notification'
-      });
-      return;
-    }
-    sessionId = session.id;
-    const url = getRemoteSessionUrl(session.id, process.env.SESSION_INGRESS_URL);
-    setAppState(prev => ({
-      ...prev,
-      ultraplanSessionUrl: url,
-      ultraplanLaunching: undefined
-    }));
-    onSessionReady?.(buildSessionReadyMessage(url));
-    logEvent('tengu_ultraplan_launched', {
-      has_seed_plan: Boolean(seedPlan),
-      model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
-    // TODO(#23985): replace registerRemoteAgentTask + startDetachedPoll with
-    // ExitPlanModeScanner inside startRemoteSessionPolling.
-    const {
-      taskId
-    } = registerRemoteAgentTask({
-      remoteTaskType: 'ultraplan',
-      session: {
-        id: session.id,
-        title: blurb || 'Ultraplan'
-      },
-      command: blurb,
-      context: {
-        abortController: new AbortController(),
-        getAppState,
-        setAppState
-      },
-      isUltraplan: true
-    });
-    startDetachedPoll(taskId, session.id, url, getAppState, setAppState);
   } catch (e) {
     logError(e);
     logEvent('tengu_ultraplan_create_failed', {
@@ -461,7 +400,7 @@ const call: LocalJSXCommandCall = async (onDone, context, args) => {
 export default {
   type: 'local-jsx',
   name: 'ultraplan',
-  description: `~10–30 min · Claude Code on the web drafts an advanced plan you can edit and approve. See ${CCR_TERMS_URL}`,
+  description: `~10–30 min · DeepCLI Cloud drafts an advanced plan you can edit and approve. See ${CCR_TERMS_URL}`,
   argumentHint: '<prompt>',
   isEnabled: () => true,
   load: () => Promise.resolve({

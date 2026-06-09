@@ -155,7 +155,7 @@ export function savePluginOptions(
   //
   // TODO: getSettings_DEPRECATED returns MERGED settings across all scopes.
   // Mutating that and writing to userSettings can leak project-scope
-  // pluginConfigs into ~/.claude/settings.json. Same pattern exists in
+  // pluginConfigs into ~/.deepcli/settings.json. Same pattern exists in
   // saveMcpServerUserConfig. Safe today since pluginConfigs is only ever
   // written here (user-scope), but will bite if we add project-scoped
   // plugin options.
@@ -310,12 +310,12 @@ export function getUnconfiguredOptions(
 }
 
 /**
- * Substitute ${CLAUDE_PLUGIN_ROOT} and ${CLAUDE_PLUGIN_DATA} with their paths.
+ * Substitute ${DEEPCLI_PLUGIN_ROOT} and ${DEEPCLI_PLUGIN_DATA} with their paths.
  * On Windows, normalizes backslashes to forward slashes so shell commands
  * don't interpret them as escape characters.
  *
- * ${CLAUDE_PLUGIN_ROOT} — version-scoped install dir (recreated on update)
- * ${CLAUDE_PLUGIN_DATA} — persistent state dir (survives updates)
+ * ${DEEPCLI_PLUGIN_ROOT} — version-scoped install dir (recreated on update)
+ * ${DEEPCLI_PLUGIN_DATA} — persistent state dir (survives updates)
  *
  * Both patterns use the function-replacement form of .replace(): ROOT so
  * `$`-patterns in NTFS paths ($$, $', $`, $&) aren't interpreted; DATA so
@@ -329,14 +329,14 @@ export function substitutePluginVariables(
 ): string {
   const normalize = (p: string) =>
     process.platform === 'win32' ? p.replace(/\\/g, '/') : p
-  let out = value.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, () =>
+  let out = value.replace(/\$\{DEEPCLI_PLUGIN_ROOT\}/g, () =>
     normalize(plugin.path),
   )
   // source can be absent (e.g. hooks where pluginRoot is a skill root without
-  // a plugin context). In that case ${CLAUDE_PLUGIN_DATA} is left literal.
+  // a plugin context). In that case ${DEEPCLI_PLUGIN_DATA} is left literal.
   if (plugin.source) {
     const source = plugin.source
-    out = out.replace(/\$\{CLAUDE_PLUGIN_DATA\}/g, () =>
+    out = out.replace(/\$\{DEEPCLI_PLUGIN_DATA\}/g, () =>
       normalize(getPluginDataDir(source)),
     )
   }

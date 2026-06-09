@@ -45,9 +45,9 @@ import {
 } from '../../utils/status.js'
 
 /**
- * Returns true if the token carries any Anthropic-issued scope (user:* or org:*).
+ * Returns true if the token carries any NexusAI-issued scope (user:* or org:*).
  * Codex tokens use OpenID Connect scopes (openid, profile, email, offline_access)
- * which are not Anthropic scopes, so this returns false for them.
+ * which are not NexusAI scopes, so this returns false for them.
  */
 function hasAnyAnthropicScope(scopes: string[] | undefined): boolean {
   if (!scopes?.length) return false
@@ -116,8 +116,8 @@ export async function installOAuthTokens(tokens: OAuthTokens): Promise<void> {
       )
     }
   } else {
-    // Third-party provider (e.g. OpenAI Codex) — tokens carry no Anthropic
-    // scopes. Skip Anthropic API key creation entirely and store the tokens
+    // Third-party provider (e.g. OpenAI Codex) — tokens carry no NexusAI
+    // scopes. Skip NexusAI API key creation entirely and store the tokens
     // in their own dedicated config slot.
     saveCodexOAuthTokens({
       accessToken: tokens.accessToken,
@@ -134,16 +134,16 @@ export async function authLogin({
   email,
   sso,
   console: useConsole,
-  claudeai,
+  deepcliAi,
 }: {
   email?: string
   sso?: boolean
   console?: boolean
-  claudeai?: boolean
+  deepcliAi?: boolean
 }): Promise<void> {
-  if (useConsole && claudeai) {
+  if (useConsole && deepcliAi) {
     process.stderr.write(
-      'Error: --console and --claudeai cannot be used together.\n',
+      'Error: --console and --deepcliAi cannot be used together.\n',
     )
     process.exit(1)
   }
@@ -152,20 +152,20 @@ export async function authLogin({
   // forceLoginMethod is a hard constraint (enterprise setting) — matches ConsoleOAuthFlow behavior.
   // Without it, --console selects Console; --claudeai (or no flag) selects claude.ai.
   const loginWithClaudeAi = settings.forceLoginMethod
-    ? settings.forceLoginMethod === 'claudeai'
+    ? settings.forceLoginMethod === 'deepcliAi'
     : !useConsole
   const orgUUID = settings.forceLoginOrgUUID
 
   // Fast path: if a refresh token is provided via env var, skip the browser
   // OAuth flow and exchange it directly for tokens.
-  const envRefreshToken = process.env.CLAUDE_CODE_OAUTH_REFRESH_TOKEN
+  const envRefreshToken = process.env.DEEPCLI_OAUTH_REFRESH_TOKEN
   if (envRefreshToken) {
-    const envScopes = process.env.CLAUDE_CODE_OAUTH_SCOPES
+    const envScopes = process.env.DEEPCLI_OAUTH_SCOPES
     if (!envScopes) {
       process.stderr.write(
-        'CLAUDE_CODE_OAUTH_SCOPES is required when using CLAUDE_CODE_OAUTH_REFRESH_TOKEN.\n' +
+        'DEEPCLI_OAUTH_SCOPES is required when using DEEPCLI_OAUTH_REFRESH_TOKEN.\n' +
           'Set it to the space-separated scopes the refresh token was issued with\n' +
-          '(e.g. "user:inference" or "user:profile user:inference user:sessions:claude_code user:mcp_servers").\n',
+          '(e.g. "user:inference" or "user:profile user:inference user:sessions:deepcli_code user:mcp_servers").\n',
       )
       process.exit(1)
     }
@@ -308,7 +308,7 @@ export async function authStatus(opts: {
     }
     if (!loggedIn) {
       process.stdout.write(
-        'Not logged in. Run claude auth login to authenticate.\n',
+        'Not logged in. Run deepcli auth login to authenticate.\n',
       )
     }
   } else {
@@ -346,6 +346,6 @@ export async function authLogout(): Promise<void> {
     process.stderr.write('Failed to log out.\n')
     process.exit(1)
   }
-  process.stdout.write('Successfully logged out from your Anthropic account.\n')
+  process.stdout.write('Successfully logged out from your NexusAI account.\n')
   process.exit(0)
 }

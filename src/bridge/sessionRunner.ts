@@ -46,10 +46,10 @@ type SessionSpawnerDeps = {
   execPath: string
   /**
    * Arguments that must precede the CLI flags when spawning. Empty for
-   * compiled binaries (where execPath is the claude binary itself); contains
+   * compiled binaries (where execPath is the deepcli binary itself); contains
    * the script path (process.argv[1]) for npm installs where execPath is the
    * node runtime. Without this, node sees --sdk-url as a node option and
-   * exits with "bad option: --sdk-url" (see anthropics/claude-code#28334).
+   * exits with "bad option: --sdk-url" (see anthropics/deepcli-code#28334).
    */
   scriptArgs: string[]
   env: NodeJS.ProcessEnv
@@ -262,7 +262,7 @@ export function createSessionSpawner(deps: SessionSpawnerDeps): SessionSpawner {
           debugFile = `${deps.debugFile}-${safeId}`
         }
       } else if (deps.verbose || process.env.USER_TYPE === 'ant') {
-        debugFile = join(tmpdir(), 'claude', `bridge-session-${safeId}.log`)
+        debugFile = join(tmpdir(), 'deepcli', `bridge-session-${safeId}.log`)
       }
 
       // Transcript file: write raw NDJSON lines for post-hoc analysis.
@@ -307,18 +307,18 @@ export function createSessionSpawner(deps: SessionSpawnerDeps): SessionSpawner {
         ...deps.env,
         // Strip the bridge's OAuth token so the child CC process uses
         // the session access token for inference instead.
-        CLAUDE_CODE_OAUTH_TOKEN: undefined,
-        CLAUDE_CODE_ENVIRONMENT_KIND: 'bridge',
-        ...(deps.sandbox && { CLAUDE_CODE_FORCE_SANDBOX: '1' }),
-        CLAUDE_CODE_SESSION_ACCESS_TOKEN: opts.accessToken,
+        DEEPCLI_OAUTH_TOKEN: undefined,
+        DEEPCLI_ENVIRONMENT_KIND: 'bridge',
+        ...(deps.sandbox && { DEEPCLI_FORCE_SANDBOX: '1' }),
+        DEEPCLI_SESSION_ACCESS_TOKEN: opts.accessToken,
         // v1: HybridTransport (WS reads + POST writes) to Session-Ingress.
-        // Harmless in v2 mode — transportUtils checks CLAUDE_CODE_USE_CCR_V2 first.
-        CLAUDE_CODE_POST_FOR_SESSION_INGRESS_V2: '1',
+        // Harmless in v2 mode — transportUtils checks DEEPCLI_USE_CCR_V2 first.
+        DEEPCLI_POST_FOR_SESSION_INGRESS_V2: '1',
         // v2: SSETransport + CCRClient to CCR's /v1/code/sessions/* endpoints.
         // Same env vars environment-manager sets in the container path.
         ...(opts.useCcrV2 && {
-          CLAUDE_CODE_USE_CCR_V2: '1',
-          CLAUDE_CODE_WORKER_EPOCH: String(opts.workerEpoch),
+          DEEPCLI_USE_CCR_V2: '1',
+          DEEPCLI_WORKER_EPOCH: String(opts.workerEpoch),
         }),
       }
 
@@ -533,7 +533,7 @@ export function createSessionSpawner(deps: SessionSpawnerDeps): SessionSpawner {
           handle.writeStdin(
             jsonStringify({
               type: 'update_environment_variables',
-              variables: { CLAUDE_CODE_SESSION_ACCESS_TOKEN: token },
+              variables: { DEEPCLI_SESSION_ACCESS_TOKEN: token },
             }) + '\n',
           )
           deps.onDebug(

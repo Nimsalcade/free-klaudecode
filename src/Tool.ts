@@ -443,20 +443,20 @@ export type Tool<
   /**
    * When true, this tool is never deferred — its full schema appears in the
    * initial prompt even when ToolSearch is enabled. For MCP tools, set via
-   * `_meta['anthropic/alwaysLoad']`. Use for tools the model must see on
+   * `_meta['nexusai/alwaysLoad']`. Use for tools the model must see on
    * turn 1 without a ToolSearch round-trip.
    */
   readonly alwaysLoad?: boolean
   /**
    * For MCP tools: the server and tool names as received from the MCP server (unnormalized).
    * Present on all MCP tools regardless of whether `name` is prefixed (mcp__server__tool)
-   * or unprefixed (CLAUDE_AGENT_SDK_MCP_NO_PREFIX mode).
+   * or unprefixed (DEEPCLI_AGENT_SDK_MCP_NO_PREFIX mode).
    */
   mcpInfo?: { serverName: string; toolName: string }
   readonly name: string
   /**
    * Maximum size in characters for tool result before it gets persisted to disk.
-   * When exceeded, the result is saved to a file and Claude receives a preview
+   * When exceeded, the result is saved to a file and DeepCLI receives a preview
    * with the file path instead of the full content.
    *
    * Set to Infinity for tools whose output must never be persisted (e.g. Read,

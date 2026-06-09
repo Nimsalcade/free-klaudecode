@@ -18,7 +18,7 @@ import { readFileSync as fsReadFileSync } from 'fs'
 import { unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import {
-  CLAUDE_AI_INFERENCE_SCOPE,
+  DEEPCLI_AI_INFERENCE_SCOPE,
   getOauthConfig,
   OAUTH_BETA_HEADER,
 } from '../../constants/oauth.js'
@@ -124,7 +124,7 @@ function getCachePath(): string {
  * Get the policy limits API endpoint
  */
 function getPolicyLimitsEndpoint(): string {
-  return `${getOauthConfig().BASE_API_URL}/api/claude_code/policy_limits`
+  return `${getOauthConfig().BASE_API_URL}/api/deepcli_code/policy_limits`
 }
 
 /**
@@ -194,7 +194,7 @@ export function isPolicyLimitsEligible(): boolean {
   }
 
   // Must have Claude.ai inference scope
-  if (!tokens.scopes?.includes(CLAUDE_AI_INFERENCE_SCOPE)) {
+  if (!tokens.scopes?.includes(DEEPCLI_AI_INFERENCE_SCOPE)) {
     return false
   }
 
@@ -250,7 +250,7 @@ function getAuthHeaders(): {
     return {
       headers: {
         Authorization: `Bearer ${oauthTokens.accessToken}`,
-        'anthropic-beta': OAUTH_BETA_HEADER,
+        'nexusai-beta': OAUTH_BETA_HEADER,
       },
     }
   }

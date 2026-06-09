@@ -40,8 +40,8 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
   async (): Promise<Record<string, ScopedMcpServerConfig>> => {
     try {
       if (isEnvDefinedFalsy(process.env.ENABLE_CLAUDEAI_MCP_SERVERS)) {
-        logForDebugging('[claudeai-mcp] Disabled via env var')
-        logEvent('tengu_claudeai_mcp_eligibility', {
+        logForDebugging('[deepcliAi-mcp] Disabled via env var')
+        logEvent('tengu_deepcliAi_mcp_eligibility', {
           state:
             'disabled_env_var' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         })
@@ -50,8 +50,8 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
 
       const tokens = getClaudeAIOAuthTokens()
       if (!tokens?.accessToken) {
-        logForDebugging('[claudeai-mcp] No access token')
-        logEvent('tengu_claudeai_mcp_eligibility', {
+        logForDebugging('[deepcliAi-mcp] No access token')
+        logEvent('tengu_deepcliAi_mcp_eligibility', {
           state:
             'no_oauth_token' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         })
@@ -65,9 +65,9 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
       // with both API keys and OAuth tokens to access claude.ai MCPs in print mode.
       if (!tokens.scopes?.includes('user:mcp_servers')) {
         logForDebugging(
-          `[claudeai-mcp] Missing user:mcp_servers scope (scopes=${tokens.scopes?.join(',') || 'none'})`,
+          `[deepcliAi-mcp] Missing user:mcp_servers scope (scopes=${tokens.scopes?.join(',') || 'none'})`,
         )
-        logEvent('tengu_claudeai_mcp_eligibility', {
+        logEvent('tengu_deepcliAi_mcp_eligibility', {
           state:
             'missing_scope' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         })
@@ -77,14 +77,14 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
       const baseUrl = getOauthConfig().BASE_API_URL
       const url = `${baseUrl}/v1/mcp_servers?limit=1000`
 
-      logForDebugging(`[claudeai-mcp] Fetching from ${url}`)
+      logForDebugging(`[deepcliAi-mcp] Fetching from ${url}`)
 
       const response = await axios.get<ClaudeAIMcpServersResponse>(url, {
         headers: {
           Authorization: `Bearer ${tokens.accessToken}`,
           'Content-Type': 'application/json',
-          'anthropic-beta': MCP_SERVERS_BETA_HEADER,
-          'anthropic-version': '2023-06-01',
+          'nexusai-beta': MCP_SERVERS_BETA_HEADER,
+          'nexusai-version': '2023-06-01',
         },
         timeout: FETCH_TIMEOUT_MS,
       })
@@ -111,23 +111,23 @@ export const fetchClaudeAIMcpConfigsIfEligible = memoize(
         usedNormalizedNames.add(finalNormalized)
 
         configs[finalName] = {
-          type: 'claudeai-proxy',
+          type: 'deepcliAi-proxy',
           url: server.url,
           id: server.id,
-          scope: 'claudeai',
+          scope: 'deepcliAi',
         }
       }
 
       logForDebugging(
-        `[claudeai-mcp] Fetched ${Object.keys(configs).length} servers`,
+        `[deepcliAi-mcp] Fetched ${Object.keys(configs).length} servers`,
       )
-      logEvent('tengu_claudeai_mcp_eligibility', {
+      logEvent('tengu_deepcliAi_mcp_eligibility', {
         state:
           'eligible' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       })
       return configs
     } catch {
-      logForDebugging(`[claudeai-mcp] Fetch failed`)
+      logForDebugging(`[deepcliAi-mcp] Fetch failed`)
       return {}
     }
   },

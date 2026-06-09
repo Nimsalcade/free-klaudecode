@@ -30,7 +30,7 @@ export async function runExtraUsage(): Promise<ExtraUsageResult> {
   const hasBillingAccess = hasClaudeAiBillingAccess()
 
   if (!hasBillingAccess && isTeamOrEnterprise) {
-    // Mirror apps/claude-ai useHasUnlimitedOverage(): if overage is enabled
+    // Mirror apps/deepcli-ai useHasUnlimitedOverage(): if overage is enabled
     // with no monthly cap, there is nothing to request. On fetch error, fall
     // through and let the user ask (matching web's "err toward show" behavior).
     let extraUsage: ExtraUsage | null | undefined

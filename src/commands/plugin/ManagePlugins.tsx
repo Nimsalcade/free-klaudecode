@@ -837,7 +837,7 @@ export function ManagePlugins({
       if (!hasMcpb) {
         try {
           const marketplaceDir = path.join(selectedPlugin!.plugin.path, '..');
-          const marketplaceJsonPath = path.join(marketplaceDir, '.claude-plugin', 'marketplace.json');
+          const marketplaceJsonPath = path.join(marketplaceDir, '.deepcli-plugin', 'marketplace.json');
           const content = await fs.readFile(marketplaceJsonPath, 'utf-8');
           const marketplace_1 = jsonParse(content);
           const entry_0 = marketplace_1.plugins?.find((p: {
@@ -895,10 +895,10 @@ export function ManagePlugins({
           });
         }
 
-        // Sort marketplaces: claude-plugin-directory first, then alphabetically
+        // Sort marketplaces: deepcli-plugin-directory first, then alphabetically
         marketplaceInfos.sort((a, b) => {
-          if (a.name === 'claude-plugin-directory') return -1;
-          if (b.name === 'claude-plugin-directory') return 1;
+          if (a.name === 'deepcli-plugin-directory') return -1;
+          if (b.name === 'deepcli-plugin-directory') return 1;
           return a.name.localeCompare(b.name);
         });
         setMarketplaces(marketplaceInfos);
@@ -1043,7 +1043,7 @@ export function ManagePlugins({
           {
             if (isBuiltin) break; // guarded above; narrows pluginScope
             if (!isInstallableScope(pluginScope)) break;
-            // If the plugin is enabled in .claude/settings.json (shared with the
+            // If the plugin is enabled in .deepcli/settings.json (shared with the
             // team), divert to a confirmation dialog that offers to disable in
             // settings.local.json instead. Check the settings file directly —
             // `pluginScope` (from installed_plugins.json) can be 'user' even when
@@ -1054,7 +1054,7 @@ export function ManagePlugins({
               setViewState('confirm-project-uninstall');
               return;
             }
-            // If the plugin has persistent data (${CLAUDE_PLUGIN_DATA}) AND this
+            // If the plugin has persistent data (${DEEPCLI_PLUGIN_DATA}) AND this
             // is the last scope, prompt before deleting it. For multi-scope
             // installs, the op's isLastScope check won't delete regardless of
             // the user's y/n — showing the dialog would mislead ("y" → nothing
@@ -1457,7 +1457,7 @@ export function ManagePlugins({
           // default scope if not installable (e.g. 'managed', though that
           // case is guarded by isActive below). deleteDataDir=false: this
           // is a recovery path for a plugin that failed to load — it may
-          // be reinstallable, so don't nuke ${CLAUDE_PLUGIN_DATA} silently.
+          // be reinstallable, so don't nuke ${DEEPCLI_PLUGIN_DATA} silently.
           // The normal uninstall path prompts; this one preserves.
           const result_2 = isInstallableScope(pluginScope_1) ? await uninstallPluginOp(pluginId_7, pluginScope_1, false) : await uninstallPluginOp(pluginId_7, 'user', false);
           let success = result_2.success;
@@ -1523,7 +1523,7 @@ export function ManagePlugins({
         return;
       }
       clearAllCaches();
-      setResult(`✓ Disabled ${selectedPlugin.plugin.name} in .claude/settings.local.json. Run /reload-plugins to apply.`);
+      setResult(`✓ Disabled ${selectedPlugin.plugin.name} in .deepcli/settings.local.json. Run /reload-plugins to apply.`);
       if (onManageComplete) void onManageComplete();
       setParentViewState({
         type: 'menu'
@@ -1757,16 +1757,16 @@ export function ManagePlugins({
       </Box>;
   }
 
-  // Confirm-project-uninstall: warn about shared .claude/settings.json,
+  // Confirm-project-uninstall: warn about shared .deepcli/settings.json,
   // offer to disable in settings.local.json instead.
   if (viewState === 'confirm-project-uninstall' && selectedPlugin) {
     return <Box flexDirection="column">
         <Text bold color="warning">
-          {selectedPlugin.plugin.name} is enabled in .claude/settings.json
+          {selectedPlugin.plugin.name} is enabled in .deepcli/settings.json
           (shared with your team)
         </Text>
         <Box marginTop={1} flexDirection="column">
-          <Text>Disable it just for you in .claude/settings.local.json?</Text>
+          <Text>Disable it just for you in .deepcli/settings.local.json?</Text>
           <Text dimColor>
             This has the same effect as uninstalling, without affecting other
             contributors.
@@ -1784,7 +1784,7 @@ export function ManagePlugins({
       </Box>;
   }
 
-  // Confirm-data-cleanup: prompt before deleting ${CLAUDE_PLUGIN_DATA} dir
+  // Confirm-data-cleanup: prompt before deleting ${DEEPCLI_PLUGIN_DATA} dir
   if (typeof viewState === 'object' && viewState.type === 'confirm-data-cleanup' && selectedPlugin) {
     return <Box flexDirection="column">
         <Text bold>
@@ -2001,12 +2001,12 @@ export function ManagePlugins({
         config: client_3.config as McpHTTPServerConfig
       };
       return <MCPRemoteServerMenu server={server_1} serverToolsCount={serverToolsCount} onViewTools={handleMcpViewTools} onCancel={handleMcpCancel} onComplete={handleMcpComplete} borderless />;
-    } else if (configType === 'claudeai-proxy') {
+    } else if (configType === 'deepcliAi-proxy') {
       const server_2: ClaudeAIServerInfo = {
         name: client_3.name,
         client: client_3,
         scope: scope_5,
-        transport: 'claudeai-proxy',
+        transport: 'deepcliAi-proxy',
         isAuthenticated: undefined,
         config: client_3.config as McpClaudeAIProxyServerConfig
       };
@@ -2057,7 +2057,7 @@ export function ManagePlugins({
         name: client_4.name,
         client: client_4,
         scope: scope_6,
-        transport: 'claudeai-proxy',
+        transport: 'deepcliAi-proxy',
         isAuthenticated: undefined,
         config: client_4.config as McpClaudeAIProxyServerConfig
       };
@@ -2116,7 +2116,7 @@ export function ManagePlugins({
         name: client_5.name,
         client: client_5,
         scope: scope_7,
-        transport: 'claudeai-proxy',
+        transport: 'deepcliAi-proxy',
         isAuthenticated: undefined,
         config: client_5.config as McpClaudeAIProxyServerConfig
       };

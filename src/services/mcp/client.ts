@@ -131,7 +131,7 @@ import {
   hasMcpDiscoveryButNoToken,
   wrapFetchWithStepUpDetection,
 } from './auth.js'
-import { markClaudeAiMcpConnected } from './claudeai.js'
+import { markClaudeAiMcpConnected } from './deepcliAi.js'
 import { getAllMcpConfigs, isMcpServerDisabled } from './config.js'
 import { getMcpServerHeaders } from './headersHelper.js'
 import { SdkControlClientTransport } from './SdkControlTransport.js'
@@ -228,13 +228,13 @@ function getMcpToolTimeoutMs(): number {
   )
 }
 
-import { isClaudeInChromeMCPServer } from '../../utils/claudeInChrome/common.js'
+import { isClaudeInChromeMCPServer } from '../../utils/deepcliInChrome/common.js'
 
-// Lazy: toolRendering.tsx pulls React/ink; only needed when Claude-in-Chrome MCP server is connected
+// Lazy: toolRendering.tsx pulls React/ink; only needed when DeepCLI-in-Chrome MCP server is connected
 /* eslint-disable @typescript-eslint/no-require-imports */
-const claudeInChromeToolRendering =
-  (): typeof import('../../utils/claudeInChrome/toolRendering.js') =>
-    require('../../utils/claudeInChrome/toolRendering.js')
+const deepcliInChromeToolRendering =
+  (): typeof import('../../utils/deepcliInChrome/toolRendering.js') =>
+    require('../../utils/deepcliInChrome/toolRendering.js')
 // Lazy: wrapper.tsx → hostAdapter.ts → executor.ts pulls both native modules
 // (@ant/computer-use-input + @ant/computer-use-swift). Runtime-gated by
 // GrowthBook tengu_malort_pedway (see gates.ts).
@@ -333,14 +333,14 @@ function mcpBaseUrlAnalytics(serverRef: ScopedMcpServerConfig): {
 }
 
 /**
- * Shared handler for sse/http/claudeai-proxy auth failures during connect:
+ * Shared handler for sse/http/deepcliAi-proxy auth failures during connect:
  * emits tengu_mcp_server_needs_auth, caches the needs-auth entry, and returns
  * the needs-auth connection result.
  */
 function handleRemoteAuthFailure(
   name: string,
   serverRef: ScopedMcpServerConfig,
-  transportType: 'sse' | 'http' | 'claudeai-proxy',
+  transportType: 'sse' | 'http' | 'deepcliAi-proxy',
 ): MCPServerConnection {
   logEvent('tengu_mcp_server_needs_auth', {
     transportType:
@@ -364,7 +364,7 @@ function handleRemoteAuthFailure(
  * Fetch wrapper for claude.ai proxy connections. Attaches the OAuth bearer
  * token and retries once on 401 via handleOAuth401Error (force-refresh).
  *
- * The Anthropic API path has this retry (withRetry.ts, grove.ts) to handle
+ * The NexusAI API path has this retry (withRetry.ts, grove.ts) to handle
  * memoize-cache staleness and clock drift. Without the same here, a single
  * stale token mass-401s every claude.ai connector and sticks them all in the
  * 15-min needs-auth cache.
@@ -400,7 +400,7 @@ export function createClaudeAiProxyFetch(innerFetch: FetchLike): FetchLike {
     // downstream service genuinely needs auth (the common case: 30+ servers
     // with "MCP server requires authentication but no OAuth token configured").
     const tokenChanged = await handleOAuth401Error(sentToken).catch(() => false)
-    logEvent('tengu_mcp_claudeai_proxy_401', {
+    logEvent('tengu_mcp_deepcliAi_proxy_401', {
       tokenChanged:
         tokenChanged as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
     })
@@ -480,7 +480,7 @@ const MCP_STREAMABLE_HTTP_ACCEPT = 'application/json, text/event-stream'
  * present on POSTs. The MCP SDK sets this inside StreamableHTTPClientTransport.send(),
  * but it is attached to a Headers instance that passes through an object spread here,
  * and some runtimes/agents have been observed dropping it before it reaches the wire.
- * See https://github.com/anthropics/claude-agent-sdk-typescript/issues/202.
+ * See https://github.com/anthropics/deepcli-agent-sdk-typescript/issues/202.
  * Normalizing here (the last wrapper before fetch()) guarantees it is sent.
  *
  * GET requests are excluded from the timeout since, for MCP transports, they are
@@ -710,7 +710,7 @@ export const connectToServer = memoize(
         const wsHeaders = {
           'User-Agent': getMCPUserAgent(),
           ...(serverRef.authToken && {
-            'X-Claude-Code-Ide-Authorization': serverRef.authToken,
+            'X-DeepCLI-Code-Ide-Authorization': serverRef.authToken,
           }),
         }
 
@@ -865,7 +865,7 @@ export const connectToServer = memoize(
         logMCPDebug(name, `HTTP transport created successfully`)
       } else if (serverRef.type === 'sdk') {
         throw new Error('SDK servers should be handled in print.ts')
-      } else if (serverRef.type === 'claudeai-proxy') {
+      } else if (serverRef.type === 'deepcliAi-proxy') {
         logMCPDebug(
           name,
           `Initializing claude.ai proxy transport for server ${serverRef.id}`,
@@ -908,10 +908,10 @@ export const connectToServer = memoize(
       ) {
         // Run the Chrome MCP server in-process to avoid spawning a ~325 MB subprocess
         const { createChromeContext } = await import(
-          '../../utils/claudeInChrome/mcpServer.js'
+          '../../utils/deepcliInChrome/mcpServer.js'
         )
         const { importClaudeForChromePackage } = await import(
-          '../../utils/claudeInChrome/package.js'
+          '../../utils/deepcliInChrome/package.js'
         )
         const { createClaudeForChromeMcpServer } =
           await importClaudeForChromePackage()
@@ -945,8 +945,8 @@ export const connectToServer = memoize(
         logMCPDebug(name, `In-process Computer Use MCP server started`)
       } else if (serverRef.type === 'stdio' || !serverRef.type) {
         const finalCommand =
-          process.env.CLAUDE_CODE_SHELL_PREFIX || serverRef.command
-        const finalArgs = process.env.CLAUDE_CODE_SHELL_PREFIX
+          process.env.DEEPCLI_SHELL_PREFIX || serverRef.command
+        const finalArgs = process.env.DEEPCLI_SHELL_PREFIX
           ? [[serverRef.command, ...serverRef.args].join(' ')]
           : serverRef.args
         transport = new StdioClientTransport({
@@ -986,10 +986,10 @@ export const connectToServer = memoize(
 
       const client = new Client(
         {
-          name: 'claude-code',
-          title: 'Claude Code',
+          name: 'deepcli-code',
+          title: 'DeepCLI',
           version: MACRO.VERSION ?? 'unknown',
-          description: "Anthropic's agentic coding tool",
+          description: "NexusAI's agentic coding tool",
           websiteUrl: PRODUCT_URL,
         },
         {
@@ -1124,7 +1124,7 @@ export const connectToServer = memoize(
             return handleRemoteAuthFailure(name, serverRef, 'http')
           }
         } else if (
-          serverRef.type === 'claudeai-proxy' &&
+          serverRef.type === 'deepcliAi-proxy' &&
           error instanceof Error
         ) {
           logMCPDebug(
@@ -1136,7 +1136,7 @@ export const connectToServer = memoize(
           // StreamableHTTPError has a `code` property with the HTTP status
           const errorCode = (error as Error & { code?: number }).code
           if (errorCode === 401) {
-            return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')
+            return handleRemoteAuthFailure(name, serverRef, 'deepcliAi-proxy')
           }
         } else if (
           serverRef.type === 'sse-ide' ||
@@ -1316,7 +1316,7 @@ export const connectToServer = memoize(
         // and close the transport so pending tool calls reject and the next
         // call reconnects with a fresh session ID.
         if (
-          (transportType === 'http' || transportType === 'claudeai-proxy') &&
+          (transportType === 'http' || transportType === 'deepcliAi-proxy') &&
           isMcpSessionExpiredError(error)
         ) {
           logMCPDebug(
@@ -1335,7 +1335,7 @@ export const connectToServer = memoize(
         if (
           transportType === 'sse' ||
           transportType === 'http' ||
-          transportType === 'claudeai-proxy'
+          transportType === 'deepcliAi-proxy'
         ) {
           // The SDK's StreamableHTTP transport fires this after exhausting its
           // own SSE reconnect attempts (default maxRetries: 2) — but it never
@@ -1762,7 +1762,7 @@ export const fetchToolsForClient = memoizeWithLRU(
       // Check if we should skip the mcp__ prefix for SDK MCP servers
       const skipPrefix =
         client.config.type === 'sdk' &&
-        isEnvTruthy(process.env.CLAUDE_AGENT_SDK_MCP_NO_PREFIX)
+        isEnvTruthy(process.env.DEEPCLI_AGENT_SDK_MCP_NO_PREFIX)
 
       // Convert MCP tools to our Tool format
       return toolsToProcess
@@ -1779,12 +1779,12 @@ export const fetchToolsForClient = memoizeWithLRU(
             // a newline here would inject orphan lines into the deferred-tool
             // list (formatDeferredToolLine joins on '\n').
             searchHint:
-              typeof tool._meta?.['anthropic/searchHint'] === 'string'
-                ? tool._meta['anthropic/searchHint']
+              typeof tool._meta?.['nexusai/searchHint'] === 'string'
+                ? tool._meta['nexusai/searchHint']
                     .replace(/\s+/g, ' ')
                     .trim() || undefined
                 : undefined,
-            alwaysLoad: tool._meta?.['anthropic/alwaysLoad'] === true,
+            alwaysLoad: tool._meta?.['nexusai/alwaysLoad'] === true,
             async description() {
               return tool.description ?? ''
             },
@@ -1978,7 +1978,7 @@ export const fetchToolsForClient = memoizeWithLRU(
             },
             ...(isClaudeInChromeMCPServer(client.name) &&
             (client.config.type === 'stdio' || !client.config.type)
-              ? claudeInChromeToolRendering().getClaudeInChromeMCPToolOverrides(
+              ? deepcliInChromeToolRendering().getClaudeInChromeMCPToolOverrides(
                   tool.name,
                 )
               : {}),
@@ -2164,7 +2164,7 @@ export async function reconnectMcpServerImpl(
       }
     }
 
-    if (config.type === 'claudeai-proxy') {
+    if (config.type === 'deepcliAi-proxy') {
       markClaudeAiMcpConnected(name)
     }
 
@@ -2307,7 +2307,7 @@ export async function getMcpToolsCommandsAndResources(
       // Each probe is a network round-trip for connect-401 plus OAuth
       // discovery, and print mode awaits the whole batch (main.tsx:3503).
       if (
-        (config.type === 'claudeai-proxy' ||
+        (config.type === 'deepcliAi-proxy' ||
           config.type === 'http' ||
           config.type === 'sse') &&
         ((await isMcpAuthCached(name)) ||
@@ -2337,7 +2337,7 @@ export async function getMcpToolsCommandsAndResources(
         return
       }
 
-      if (config.type === 'claudeai-proxy') {
+      if (config.type === 'deepcliAi-proxy') {
         markClaudeAiMcpConnected(name)
       }
 
@@ -3221,7 +3221,7 @@ async function callMCPTool({
         'code' in e &&
         (e as Error & { code?: number }).code === -32000 &&
         e.message.includes('Connection closed') &&
-        (config.type === 'http' || config.type === 'claudeai-proxy')
+        (config.type === 'http' || config.type === 'deepcliAi-proxy')
       if (isSessionExpired || isConnectionClosedOnHttp) {
         logMCPDebug(
           name,
@@ -3281,10 +3281,10 @@ export async function setupSdkMcpClients(
 
       const client = new Client(
         {
-          name: 'claude-code',
-          title: 'Claude Code',
+          name: 'deepcli-code',
+          title: 'DeepCLI',
           version: MACRO.VERSION ?? 'unknown',
-          description: "Anthropic's agentic coding tool",
+          description: "NexusAI's agentic coding tool",
           websiteUrl: PRODUCT_URL,
         },
         {

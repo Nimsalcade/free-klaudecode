@@ -35,7 +35,7 @@ export async function sendNotification(
   })
 }
 
-const DEFAULT_TITLE = 'Claude Code'
+const DEFAULT_TITLE = 'DeepCLI'
 
 async function sendToChannel(
   channel: string,

@@ -428,9 +428,9 @@ function getModelFamilyInfo(
 
   // Sonnet family
   if (
-    canonical.includes('claude-sonnet-4-6') ||
-    canonical.includes('claude-sonnet-4-5') ||
-    canonical.includes('claude-sonnet-4-') ||
+    canonical.includes('deepcli-sonnet-4-6') ||
+    canonical.includes('deepcli-sonnet-4-5') ||
+    canonical.includes('deepcli-sonnet-4-') ||
     canonical.includes('claude-3-7-sonnet') ||
     canonical.includes('claude-3-5-sonnet')
   ) {
@@ -441,7 +441,7 @@ function getModelFamilyInfo(
   }
 
   // Opus family
-  if (canonical.includes('claude-opus-4')) {
+  if (canonical.includes('deepcli-opus-4')) {
     const currentName = getMarketingNameForModel(getDefaultOpusModel())
     if (currentName) {
       return { alias: 'Opus', currentVersionName: currentName }
@@ -450,7 +450,7 @@ function getModelFamilyInfo(
 
   // Haiku family
   if (
-    canonical.includes('claude-haiku') ||
+    canonical.includes('deepcli-haiku') ||
     canonical.includes('claude-3-5-haiku')
   ) {
     const currentName = getMarketingNameForModel(getDefaultHaikuModel())
@@ -463,7 +463,7 @@ function getModelFamilyInfo(
 }
 
 /**
- * Returns a ModelOption for a known Anthropic model with a human-readable
+ * Returns a ModelOption for a known NexusAI model with a human-readable
  * label, and an upgrade hint if a newer version is available via the alias.
  * Returns null if the model is not recognized.
  */
@@ -547,7 +547,7 @@ export function getModelOptions(fastMode = false): ModelOption[] {
       getMergedOpus1MOption(fastMode),
     ])
   } else {
-    // Try to show a human-readable label for known Anthropic models, with an
+    // Try to show a human-readable label for known NexusAI models, with an
     // upgrade hint if the alias now resolves to a newer version.
     const knownOption = getKnownModelOption(customModel)
     if (knownOption) {

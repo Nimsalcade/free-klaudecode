@@ -6,7 +6,7 @@ import {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-/** Collects an Anthropic SSE response body into parsed event objects. */
+/** Collects an NexusAI SSE response body into parsed event objects. */
 async function readAnthropicSSE(res: Response): Promise<Array<Record<string, unknown>>> {
   const text = await res.text()
   return text
@@ -19,7 +19,7 @@ async function readAnthropicSSE(res: Response): Promise<Array<Record<string, unk
     .filter((e): e is Record<string, unknown> => e !== null)
 }
 
-/** Reconstructs assistant output from an Anthropic SSE event list. */
+/** Reconstructs assistant output from an NexusAI SSE event list. */
 function reconstruct(events: Array<Record<string, unknown>>) {
   let text = ''
   let toolName = ''
@@ -59,9 +59,9 @@ afterEach(() => {
 
 describe('getLocalProviderConfig', () => {
   test('defaults to a local Ollama endpoint', () => {
-    delete process.env.CLAUDE_CODE_LOCAL_BASE_URL
-    delete process.env.CLAUDE_CODE_LOCAL_API_KEY
-    delete process.env.CLAUDE_CODE_LOCAL_MODEL
+    delete process.env.DEEPCLI_LOCAL_BASE_URL
+    delete process.env.DEEPCLI_LOCAL_API_KEY
+    delete process.env.DEEPCLI_LOCAL_MODEL
     const cfg = getLocalProviderConfig()
     expect(cfg.baseURL).toBe('http://localhost:11434/v1')
     expect(cfg.apiKey).toBe('not-needed')
@@ -69,9 +69,9 @@ describe('getLocalProviderConfig', () => {
   })
 
   test('honors env overrides and strips trailing slashes', () => {
-    process.env.CLAUDE_CODE_LOCAL_BASE_URL = 'http://localhost:1234/v1///'
-    process.env.CLAUDE_CODE_LOCAL_API_KEY = 'sk-test'
-    process.env.CLAUDE_CODE_LOCAL_MODEL = 'qwen2.5-coder'
+    process.env.DEEPCLI_LOCAL_BASE_URL = 'http://localhost:1234/v1///'
+    process.env.DEEPCLI_LOCAL_API_KEY = 'sk-test'
+    process.env.DEEPCLI_LOCAL_MODEL = 'qwen2.5-coder'
     const cfg = getLocalProviderConfig()
     expect(cfg.baseURL).toBe('http://localhost:1234/v1')
     expect(cfg.apiKey).toBe('sk-test')
@@ -124,7 +124,7 @@ describe('createLocalFetch — streaming', () => {
 
   afterEach(() => server.stop(true))
 
-  test('translates Anthropic request -> OpenAI chat completions shape', async () => {
+  test('translates NexusAI request -> OpenAI chat completions shape', async () => {
     const localFetch = createLocalFetch({
       baseURL: `http://localhost:${server.port}/v1`,
       apiKey: 'not-needed',
@@ -132,9 +132,9 @@ describe('createLocalFetch — streaming', () => {
     })
     await localFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'anthropic-version': '2023-06-01' },
+      headers: { 'nexusai-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'deepcli-opus-4-6',
         stream: true,
         max_tokens: 1024,
         system: 'You are helpful.',
@@ -159,7 +159,7 @@ describe('createLocalFetch — streaming', () => {
     expect((tools[0] as { function: { name: string } }).function.name).toBe('get_weather')
   })
 
-  test('translates OpenAI stream -> Anthropic SSE (text, tool call, usage)', async () => {
+  test('translates OpenAI stream -> NexusAI SSE (text, tool call, usage)', async () => {
     const localFetch = createLocalFetch({
       baseURL: `http://localhost:${server.port}/v1`,
       apiKey: 'not-needed',
@@ -167,9 +167,9 @@ describe('createLocalFetch — streaming', () => {
     })
     const res = await localFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'anthropic-version': '2023-06-01' },
+      headers: { 'nexusai-version': '2023-06-01' },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'deepcli-opus-4-6',
         stream: true,
         messages: [{ role: 'user', content: 'weather?' }],
       }),
@@ -191,7 +191,7 @@ describe('createLocalFetch — streaming', () => {
 // ── Non-streaming translation ───────────────────────────────────────
 
 describe('createLocalFetch — non-streaming', () => {
-  test('translates a single OpenAI completion -> Anthropic message JSON', async () => {
+  test('translates a single OpenAI completion -> NexusAI message JSON', async () => {
     const server = Bun.serve({
       port: 0,
       fetch: () =>
@@ -226,9 +226,9 @@ describe('createLocalFetch — non-streaming', () => {
       })
       const res = await localFetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'anthropic-version': '2023-06-01' },
+        headers: { 'nexusai-version': '2023-06-01' },
         body: JSON.stringify({
-          model: 'claude-opus-4-6',
+          model: 'deepcli-opus-4-6',
           stream: false,
           messages: [{ role: 'user', content: 'go' }],
         }),
@@ -264,7 +264,7 @@ describe('createLocalFetch — errors', () => {
     })
     const res = await localFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'anthropic-version': '2023-06-01' },
+      headers: { 'nexusai-version': '2023-06-01' },
       body: JSON.stringify({ model: 'x', stream: false, messages: [] }),
     })
     expect(res.status).toBe(502)

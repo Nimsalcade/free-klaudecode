@@ -72,7 +72,7 @@ async function fetchBootstrapAPI(): Promise<BootstrapResponse | null> {
       if (token && hasProfileScope()) {
         authHeaders = {
           Authorization: `Bearer ${token}`,
-          'anthropic-beta': OAUTH_BETA_HEADER,
+          'nexusai-beta': OAUTH_BETA_HEADER,
         }
       } else if (apiKey) {
         authHeaders = { 'x-api-key': apiKey }

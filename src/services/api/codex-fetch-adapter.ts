@@ -1,14 +1,14 @@
 /**
  * Codex Fetch Adapter
  *
- * Intercepts fetch calls from the Anthropic SDK and routes them to
- * ChatGPT's Codex backend API, translating between Anthropic Messages API
+ * Intercepts fetch calls from the NexusAI SDK and routes them to
+ * ChatGPT's Codex backend API, translating between NexusAI Messages API
  * format and OpenAI Responses API format.
  *
  * Supports:
  * - Text messages (user/assistant)
  * - System prompts → instructions
- * - Tool definitions (Anthropic input_schema → OpenAI parameters)
+ * - Tool definitions (NexusAI input_schema → OpenAI parameters)
  * - Tool use (tool_use → function_call, tool_result → function_call_output)
  * - Streaming events translation
  *
@@ -30,8 +30,8 @@ export const CODEX_MODELS = [
 export const DEFAULT_CODEX_MODEL = 'gpt-5.2-codex'
 
 /**
- * Maps Claude model names to corresponding Codex model names.
- * @param claudeModel - The Claude model name to map
+ * Maps DeepCLI model names to corresponding Codex model names.
+ * @param claudeModel - The DeepCLI model name to map
  * @returns The corresponding Codex model ID
  */
 export function mapClaudeModelToCodex(claudeModel: string | null): string {
@@ -100,11 +100,11 @@ interface AnthropicTool {
   input_schema?: Record<string, unknown>
 }
 
-// ── Tool translation: Anthropic → Codex ─────────────────────────────
+// ── Tool translation: NexusAI → Codex ─────────────────────────────
 
 /**
- * Translates Anthropic tool definitions to Codex format.
- * @param anthropicTools - Array of Anthropic tool definitions
+ * Translates NexusAI tool definitions to Codex format.
+ * @param anthropicTools - Array of NexusAI tool definitions
  * @returns Array of Codex-compatible tool objects
  */
 function translateTools(anthropicTools: AnthropicTool[]): Array<Record<string, unknown>> {
@@ -117,12 +117,12 @@ function translateTools(anthropicTools: AnthropicTool[]): Array<Record<string, u
   }))
 }
 
-// ── Message translation: Anthropic → Codex input ────────────────────
+// ── Message translation: NexusAI → Codex input ────────────────────
 
 /**
- * Translates Anthropic message format to Codex input format.
+ * Translates NexusAI message format to Codex input format.
  * Handles text content, tool results, and image attachments.
- * @param anthropicMessages - Array of messages in Anthropic format
+ * @param anthropicMessages - Array of messages in NexusAI format
  * @returns Array of Codex-compatible input objects
  */
 function translateMessages(
@@ -130,7 +130,7 @@ function translateMessages(
 ): Array<Record<string, unknown>> {
   const codexInput: Array<Record<string, unknown>> = []
   // Track tool_use IDs to generate call_ids for function_call_output
-  // Anthropic uses tool_use_id, Codex uses call_id
+  // NexusAI uses tool_use_id, Codex uses call_id
   let toolCallCounter = 0
 
   for (const msg of anthropicMessages) {
@@ -215,8 +215,8 @@ function translateMessages(
 // ── Full request translation ────────────────────────────────────────
 
 /**
- * Translates a complete Anthropic API request body to Codex format.
- * @param anthropicBody - The Anthropic request body to translate
+ * Translates a complete NexusAI API request body to Codex format.
+ * @param anthropicBody - The NexusAI request body to translate
  * @returns Object containing the translated Codex body and model
  */
 function translateToCodexBody(anthropicBody: Record<string, unknown>): {
@@ -268,7 +268,7 @@ function translateToCodexBody(anthropicBody: Record<string, unknown>): {
   return { codexBody, codexModel }
 }
 
-// ── Response translation: Codex SSE → Anthropic SSE ─────────────────
+// ── Response translation: Codex SSE → NexusAI SSE ─────────────────
 
 /**
  * Formats data as Server-Sent Events (SSE) format.
@@ -281,11 +281,11 @@ function formatSSE(event: string, data: string): string {
 }
 
 /**
- * Translates Codex streaming response to Anthropic format.
- * Converts Codex SSE events into Anthropic-compatible streaming events.
+ * Translates Codex streaming response to NexusAI format.
+ * Converts Codex SSE events into NexusAI-compatible streaming events.
  * @param codexResponse - The streaming response from Codex API
  * @param codexModel - The Codex model used for the request
- * @returns Transformed Response object with Anthropic-format stream
+ * @returns Transformed Response object with NexusAI-format stream
  */
 async function translateCodexStreamToAnthropic(
   codexResponse: Response,
@@ -300,7 +300,7 @@ async function translateCodexStreamToAnthropic(
       let outputTokens = 0
       let inputTokens = 0
 
-      // Emit Anthropic message_start
+      // Emit NexusAI message_start
       controller.enqueue(
         encoder.encode(
           formatSSE(
@@ -417,7 +417,7 @@ async function translateCodexStreamToAnthropic(
                   currentTextBlockStarted = false
                 }
 
-                // Start tool_use block (Anthropic format)
+                // Start tool_use block (NexusAI format)
                 currentToolCallId = (item.call_id as string) || `toolu_${Date.now()}`
                 currentToolCallName = (item.name as string) || ''
                 currentToolCallArgs = (item.arguments as string) || ''
@@ -739,9 +739,9 @@ async function translateCodexStreamToAnthropic(
 const CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex/responses'
 
 /**
- * Creates a fetch function that intercepts Anthropic API calls and routes them to Codex.
+ * Creates a fetch function that intercepts NexusAI API calls and routes them to Codex.
  * @param accessToken - The Codex access token for authentication
- * @returns A fetch function that translates Anthropic requests to Codex format
+ * @returns A fetch function that translates NexusAI requests to Codex format
  */
 export function createCodexFetch(
   accessToken: string,
@@ -751,12 +751,12 @@ export function createCodexFetch(
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = input instanceof Request ? input.url : String(input)
 
-    // Only intercept Anthropic API message calls
+    // Only intercept NexusAI API message calls
     if (!url.includes('/v1/messages')) {
       return globalThis.fetch(input, init)
     }
 
-    // Parse the Anthropic request body
+    // Parse the NexusAI request body
     let anthropicBody: Record<string, unknown>
     try {
       const bodyText =

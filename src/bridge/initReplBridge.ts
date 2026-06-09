@@ -161,7 +161,7 @@ export async function initReplBridge(
     return null
   }
 
-  // When CLAUDE_BRIDGE_OAUTH_TOKEN is set (ant-only local dev), the bridge
+  // When DEEPCLI_BRIDGE_OAUTH_TOKEN is set (ant-only local dev), the bridge
   // uses that token directly via getBridgeAccessToken() — keychain state is
   // irrelevant. Skip 2b/2c to preserve that decoupling: an expired keychain
   // token shouldn't block a bridge connection that doesn't use it.
@@ -401,7 +401,7 @@ export async function initReplBridge(
   // on env-based.
   //
   // NAMING: "env-less" is distinct from "CCR v2" (the /worker/* transport).
-  // The env-based path below can ALSO use CCR v2 via CLAUDE_CODE_USE_CCR_V2.
+  // The env-based path below can ALSO use CCR v2 via DEEPCLI_USE_CCR_V2.
   // tengu_bridge_repl_v2 gates env-less (no poll loop), not transport version.
   //
   // perpetual (assistant-mode session continuity via bridge-pointer.json) is
@@ -415,7 +415,7 @@ export async function initReplBridge(
         `[bridge:repl] Skipping: ${versionError}`,
         true,
       )
-      onStateChange?.('failed', 'run `claude update` to upgrade')
+      onStateChange?.('failed', 'run `deepcli update` to upgrade')
       return null
     }
     logForDebugging(
@@ -456,7 +456,7 @@ export async function initReplBridge(
   const versionError = checkBridgeMinVersion()
   if (versionError) {
     logBridgeSkip('version_too_old', `[bridge:repl] Skipping: ${versionError}`)
-    onStateChange?.('failed', 'run `claude update` to upgrade')
+    onStateChange?.('failed', 'run `deepcli update` to upgrade')
     return null
   }
 
@@ -466,21 +466,21 @@ export async function initReplBridge(
   const gitRepoUrl = await getRemoteUrl()
   const sessionIngressUrl =
     process.env.USER_TYPE === 'ant' &&
-    process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL
-      ? process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL
+    process.env.DEEPCLI_BRIDGE_SESSION_INGRESS_URL
+      ? process.env.DEEPCLI_BRIDGE_SESSION_INGRESS_URL
       : baseUrl
 
   // Assistant-mode sessions advertise a distinct worker_type so the web UI
   // can filter them into a dedicated picker. KAIROS guard keeps the
   // assistant module out of external builds entirely.
-  let workerType: BridgeWorkerType = 'claude_code'
+  let workerType: BridgeWorkerType = 'deepcli_code'
   if (feature('KAIROS')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { isAssistantMode } =
       require('../assistant/index.js') as typeof import('../assistant/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     if (isAssistantMode()) {
-      workerType = 'claude_code_assistant'
+      workerType = 'deepcli_code_assistant'
     }
   }
 

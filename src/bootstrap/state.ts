@@ -119,7 +119,7 @@ type State = {
   // Last auto-mode classifier request(s) for /share transcript
   lastClassifierRequests: unknown[] | null
   // CLAUDE.md content cached by context.ts for the auto-mode classifier.
-  // Breaks the yoloClassifier → claudemd → filesystem → permissions cycle.
+  // Breaks the yoloClassifier → deepclimd → filesystem → permissions cycle.
   cachedClaudeMdContent: string | null
   // In-memory error log for recent errors
   inMemoryErrorLog: Array<{ error: string; timestamp: string }>
@@ -131,13 +131,13 @@ type State = {
   useCoworkPlugins: boolean
   // Session-only bypass permissions mode flag (not persisted)
   sessionBypassPermissionsMode: boolean
-  // Session-only flag gating the .claude/scheduled_tasks.json watcher
+  // Session-only flag gating the .deepcli/scheduled_tasks.json watcher
   // (useScheduledTasks). Set by cronScheduler.start() when the JSON has
   // entries, or by CronCreateTool. Not persisted.
   scheduledTasksEnabled: boolean
   // Session-only cron tasks created via CronCreate with durable: false.
   // Fire on schedule like file-backed tasks but are never written to
-  // .claude/scheduled_tasks.json — they die with the process. Typed via
+  // .deepcli/scheduled_tasks.json — they die with the process. Typed via
   // SessionCronTask below (not importing from cronTasks.ts keeps
   // bootstrap a leaf of the import DAG).
   sessionCronTasks: SessionCronTask[]
@@ -952,35 +952,35 @@ export function setMeter(
   STATE.meter = meter
 
   // Initialize all counters using the provided factory
-  STATE.sessionCounter = createCounter('claude_code.session.count', {
+  STATE.sessionCounter = createCounter('deepcli_code.session.count', {
     description: 'Count of CLI sessions started',
   })
-  STATE.locCounter = createCounter('claude_code.lines_of_code.count', {
+  STATE.locCounter = createCounter('deepcli_code.lines_of_code.count', {
     description:
       "Count of lines of code modified, with the 'type' attribute indicating whether lines were added or removed",
   })
-  STATE.prCounter = createCounter('claude_code.pull_request.count', {
+  STATE.prCounter = createCounter('deepcli_code.pull_request.count', {
     description: 'Number of pull requests created',
   })
-  STATE.commitCounter = createCounter('claude_code.commit.count', {
+  STATE.commitCounter = createCounter('deepcli_code.commit.count', {
     description: 'Number of git commits created',
   })
-  STATE.costCounter = createCounter('claude_code.cost.usage', {
-    description: 'Cost of the Claude Code session',
+  STATE.costCounter = createCounter('deepcli_code.cost.usage', {
+    description: 'Cost of the DeepCLI session',
     unit: 'USD',
   })
-  STATE.tokenCounter = createCounter('claude_code.token.usage', {
+  STATE.tokenCounter = createCounter('deepcli_code.token.usage', {
     description: 'Number of tokens used',
     unit: 'tokens',
   })
   STATE.codeEditToolDecisionCounter = createCounter(
-    'claude_code.code_edit_tool.decision',
+    'deepcli_code.code_edit_tool.decision',
     {
       description:
         'Count of code editing tool permission decisions (accept/reject) for Edit, Write, and NotebookEdit tools',
     },
   )
-  STATE.activeTimeCounter = createCounter('claude_code.active_time.total', {
+  STATE.activeTimeCounter = createCounter('deepcli_code.active_time.total', {
     description: 'Total active time in seconds',
     unit: 's',
   })
@@ -1233,7 +1233,7 @@ export function setAllowedSettingSources(sources: SettingSource[]): void {
 
 export function preferThirdPartyAuthentication(): boolean {
   // IDE extension should behave as 1P for authentication reasons.
-  return getIsNonInteractiveSession() && STATE.clientType !== 'claude-vscode'
+  return getIsNonInteractiveSession() && STATE.clientType !== 'deepcli-vscode'
 }
 
 export function setInlinePlugins(plugins: Array<string>): void {
@@ -1570,7 +1570,7 @@ export function addSlowOperation(operation: string, durationMs: number): void {
   if (process.env.USER_TYPE !== 'ant') return
   // Skip tracking for editor sessions (user editing a prompt file in $EDITOR)
   // These are intentionally slow since the user is drafting text
-  if (operation.includes('exec') && operation.includes('claude-prompt-')) {
+  if (operation.includes('exec') && operation.includes('deepcli-prompt-')) {
     return
   }
   const now = Date.now()

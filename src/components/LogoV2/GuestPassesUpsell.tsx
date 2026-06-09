@@ -20,18 +20,7 @@ function resetIfPassesRefreshed(): void {
   }
 }
 function shouldShowGuestPassesUpsell(): boolean {
-  const {
-    eligible,
-    hasCache
-  } = checkCachedPassesEligibility();
-  // Only show if eligible and cache exists (don't block on fetch)
-  if (!eligible || !hasCache) return false;
-  // Reset upsell counters if passes were refreshed (covers both campaign change and pass refresh)
-  resetIfPassesRefreshed();
-  const config = getGlobalConfig();
-  if ((config.passesUpsellSeenCount ?? 0) >= 3) return false;
-  if (config.hasVisitedPasses) return false;
-  return true;
+  return false;
 }
 export function useShowGuestPassesUpsell() {
   const [show] = useState(_temp);
@@ -60,7 +49,7 @@ export function GuestPassesUpsell() {
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     const reward = getCachedReferrerReward();
-    t0 = <Text dimColor={true}><Text color="startupAccent">[✻]</Text> <Text color="startupAccent">[✻]</Text>{" "}<Text color="startupAccent">[✻]</Text> ·{" "}{reward ? `Share Free Code and earn ${formatCreditAmount(reward)} of extra usage · /passes` : "3 guest passes at /passes"}</Text>;
+    t0 = <Text dimColor={true}><Text color="startupAccent">[✻]</Text> <Text color="startupAccent">[✻]</Text>{" "}<Text color="startupAccent">[✻]</Text> ·{" "}{reward ? `Share DeepCLI and earn ${formatCreditAmount(reward)} of extra usage · /passes` : "3 guest passes at /passes"}</Text>;
     $[0] = t0;
   } else {
     t0 = $[0];

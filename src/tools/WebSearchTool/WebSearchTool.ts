@@ -6,7 +6,7 @@ import { getAPIProvider } from 'src/utils/model/providers.js'
 import type { PermissionResult } from 'src/utils/permissions/PermissionResult.js'
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
-import { queryModelWithStreaming } from '../../services/api/claude.js'
+import { queryModelWithStreaming } from '../../services/api/deepcli.js'
 import { buildTool, type ToolDef } from '../../Tool.js'
 import { lazySchema } from '../../utils/lazySchema.js'
 import { logError } from '../../utils/log.js'
@@ -155,7 +155,7 @@ export const WebSearchTool = buildTool({
   maxResultSizeChars: 100_000,
   shouldDefer: true,
   async description(input) {
-    return `Claude wants to search the web for: ${input.query}`
+    return `DeepCLI wants to search the web for: ${input.query}`
   },
   userFacingName() {
     return 'Web Search'
@@ -173,13 +173,13 @@ export const WebSearchTool = buildTool({
       return true
     }
 
-    // Enable for Vertex AI with supported models (Claude 4.0+)
+    // Enable for Vertex AI with supported models (DeepCLI 4.0+)
     if (provider === 'vertex') {
       const model = getMainLoopModel()
       const supportsWebSearch =
-        model.includes('claude-opus-4') ||
-        model.includes('claude-sonnet-4') ||
-        model.includes('claude-haiku-4')
+        model.includes('deepcli-opus-4') ||
+        model.includes('deepcli-sonnet-4') ||
+        model.includes('deepcli-haiku-4')
 
       return supportsWebSearch
     }

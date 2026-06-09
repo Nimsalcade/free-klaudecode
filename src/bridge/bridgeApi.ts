@@ -77,8 +77,8 @@ export function createBridgeApiClient(deps: BridgeApiDeps): BridgeApiClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': BETA_HEADER,
+      'nexusai-version': '2023-06-01',
+      'nexusai-beta': BETA_HEADER,
       'x-environment-runner-version': deps.runnerVersion,
     }
     const deviceToken = deps.getTrustedDeviceToken?.()
@@ -471,7 +471,7 @@ function handleErrorStatus(
     case 403:
       throw new BridgeFatalError(
         isExpiredErrorType(errorType)
-          ? 'Remote Control session has expired. Please restart with `claude remote-control` or /remote-control.'
+          ? 'Remote Control session has expired. Please restart with `deepcli remote-control` or /remote-control.'
           : `${context}: Access denied (403)${detail ? `: ${detail}` : ''}. Check your organization permissions.`,
         403,
         errorType,
@@ -486,7 +486,7 @@ function handleErrorStatus(
     case 410:
       throw new BridgeFatalError(
         detail ??
-          'Remote Control session has expired. Please restart with `claude remote-control` or /remote-control.',
+          'Remote Control session has expired. Please restart with `deepcli remote-control` or /remote-control.',
         410,
         errorType ?? 'environment_expired',
       )

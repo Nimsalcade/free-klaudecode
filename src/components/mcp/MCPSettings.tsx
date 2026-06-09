@@ -72,7 +72,7 @@ export function MCPSettings(t0) {
           const scope = client_0.config.scope;
           const isSSE = client_0.config.type === "sse";
           const isHTTP = client_0.config.type === "http";
-          const isClaudeAIProxy = client_0.config.type === "claudeai-proxy";
+          const isClaudeAIProxy = client_0.config.type === "deepcliAi-proxy";
           let isAuthenticated = undefined;
           if (isSSE || isHTTP) {
             const authProvider = new ClaudeAuthProvider(client_0.name, client_0.config as McpSSEServerConfig | McpHTTPServerConfig);
@@ -89,7 +89,7 @@ export function MCPSettings(t0) {
           if (isClaudeAIProxy) {
             return {
               ...baseInfo,
-              transport: "claudeai-proxy" as const,
+              transport: "deepcliAi-proxy" as const,
               isAuthenticated: false,
               config: client_0.config as McpClaudeAIProxyServerConfig
             };
@@ -147,7 +147,7 @@ export function MCPSettings(t0) {
         return;
       }
       if (servers.length === 0 && agentMcpServers.length === 0) {
-        onComplete("No MCP servers configured. Please run /doctor if this is unexpected. Otherwise, run `claude mcp --help` or visit https://code.claude.com/docs/en/mcp to learn more.");
+        onComplete("No MCP servers configured. Please run /doctor if this is unexpected. Otherwise, run `deepcli mcp --help` or visit https://docs.deepcli.dev/docs/en/mcp to learn more.");
       }
     };
     t8 = [servers.length, filteredClients.length, agentMcpServers.length, onComplete];

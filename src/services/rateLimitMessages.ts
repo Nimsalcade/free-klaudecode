@@ -10,7 +10,7 @@ import {
 } from '../utils/auth.js'
 import { hasClaudeAiBillingAccess } from '../utils/billing.js'
 import { formatResetTime } from '../utils/format.js'
-import type { ClaudeAILimits } from './claudeAiLimits.js'
+import type { ClaudeAILimits } from './deepcliAiLimits.js'
 
 const FEEDBACK_CHANNEL_ANT = '#briarpatch-cc'
 
@@ -279,7 +279,7 @@ function getWarningUpsellText(
 
     // Pro/Max users: prompt to upgrade
     if (subscriptionType === 'pro' || subscriptionType === 'max') {
-      return '/upgrade to keep using Claude Code'
+      return '/upgrade to keep using DeepCLI'
     }
   }
 

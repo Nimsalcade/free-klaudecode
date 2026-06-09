@@ -6,7 +6,7 @@ import { dirname, join, parse } from 'path'
 import { getPlatform } from 'src/utils/platform.js'
 import type { PluginError } from '../../types/plugin.js'
 import { getPluginErrorMessage } from '../../types/plugin.js'
-import { isClaudeInChromeMCPServer } from '../../utils/claudeInChrome/common.js'
+import { isClaudeInChromeMCPServer } from '../../utils/deepcliInChrome/common.js'
 import {
   getCurrentProjectConfig,
   getGlobalConfig,
@@ -40,7 +40,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from '../analytics/index.js'
-import { fetchClaudeAIMcpConfigsIfEligible } from './claudeai.js'
+import { fetchClaudeAIMcpConfigsIfEligible } from './deepcliAi.js'
 import { expandEnvVarsInString } from './envExpansion.js'
 import {
   type ConfigScope,
@@ -195,7 +195,7 @@ export function unwrapCcrProxyUrl(url: string): string {
 /**
  * Compute a dedup signature for an MCP server config.
  * Two configs with the same signature are considered "the same server" for
- * plugin deduplication. Ignores env (plugins always inject CLAUDE_PLUGIN_ROOT)
+ * plugin deduplication. Ignores env (plugins always inject DEEPCLI_PLUGIN_ROOT)
  * and headers (same URL = same server regardless of auth).
  * Returns null only for configs with neither command nor url (sdk type).
  */
@@ -268,7 +268,7 @@ export function dedupPluginMcpServers(
 /**
  * Filter claude.ai connectors, dropping any whose signature matches an enabled
  * manually-configured server. Manual wins: a user who wrote .mcp.json or ran
- * `claude mcp add` expressed higher intent than a connector toggled in the web UI.
+ * `deepcli mcp add` expressed higher intent than a connector toggled in the web UI.
  *
  * Connector keys are `claude.ai <DisplayName>` so they never key-collide with
  * manual servers in the merge — this content-based check catches the case where
@@ -604,7 +604,7 @@ function expandEnvVars(config: McpServerConfig): {
     case 'sdk':
       expanded = config
       break
-    case 'claudeai-proxy':
+    case 'deepcliAi-proxy':
       expanded = config
       break
   }
@@ -633,7 +633,7 @@ export async function addMcpConfig(
     )
   }
 
-  // Block reserved server name "claude-in-chrome"
+  // Block reserved server name "deepcli-in-chrome"
   if (isClaudeInChromeMCPServer(name)) {
     throw new Error(`Cannot add MCP server "${name}": this name is reserved.`)
   }
@@ -705,8 +705,8 @@ export async function addMcpConfig(
       throw new Error('Cannot add MCP server to scope: dynamic')
     case 'enterprise':
       throw new Error('Cannot add MCP server to scope: enterprise')
-    case 'claudeai':
-      throw new Error('Cannot add MCP server to scope: claudeai')
+    case 'deepcliAi':
+      throw new Error('Cannot add MCP server to scope: deepcliAi')
   }
 
   // Add based on scope
@@ -1066,7 +1066,7 @@ export function getMcpConfigByName(name: string): ScopedMcpServerConfig | null {
  * critical path. The optional extraDedupTargets promise (e.g. the in-flight
  * claude.ai connector fetch) is awaited only after loadAllPluginsCacheOnly() completes,
  * so the two overlap rather than serialize.
- * @returns Claude Code server configurations with appropriate scopes
+ * @returns DeepCLI server configurations with appropriate scopes
  */
 export async function getClaudeCodeMcpConfigs(
   dynamicServers: Record<string, ScopedMcpServerConfig> = {},
@@ -1266,20 +1266,20 @@ export async function getAllMcpConfigs(): Promise<{
 
   // Kick off the claude.ai fetch before getClaudeCodeMcpConfigs so it overlaps
   // with loadAllPluginsCacheOnly() inside. Memoized — the awaited call below is a cache hit.
-  const claudeaiPromise = fetchClaudeAIMcpConfigsIfEligible()
+  const deepcliAiPromise = fetchClaudeAIMcpConfigsIfEligible()
   const { servers: claudeCodeServers, errors } = await getClaudeCodeMcpConfigs(
     {},
-    claudeaiPromise,
+    deepcliAiPromise,
   )
-  const { allowed: claudeaiMcpServers } = filterMcpServersByPolicy(
-    await claudeaiPromise,
+  const { allowed: deepcliAiMcpServers } = filterMcpServersByPolicy(
+    await deepcliAiPromise,
   )
 
   // Suppress claude.ai connectors that duplicate an enabled manual server.
   // Keys never collide (`slack` vs `claude.ai Slack`) so the merge below
   // won't catch this — need content-based dedup by URL signature.
   const { servers: dedupedClaudeAi } = dedupClaudeAiMcpServers(
-    claudeaiMcpServers,
+    deepcliAiMcpServers,
     claudeCodeServers,
   )
 
@@ -1359,7 +1359,7 @@ export function parseMcpConfig(params: {
         ...(filePath && { file: filePath }),
         path: `mcpServers.${name}`,
         message: `Windows requires 'cmd /c' wrapper to execute npx`,
-        suggestion: `Change command to "cmd" with args ["/c", "npx", ...]. See: https://code.claude.com/docs/en/mcp#configure-mcp-servers`,
+        suggestion: `Change command to "cmd" with args ["/c", "npx", ...]. See: https://docs.deepcli.dev/docs/en/mcp#configure-mcp-servers`,
         mcpErrorMetadata: {
           scope,
           serverName: name,
@@ -1495,11 +1495,11 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(
   configs: Record<string, ScopedMcpServerConfig>,
 ): boolean {
   // NOTE: While all SDK MCP servers should be safe from a security perspective, we are still discussing
-  // what the best way to do this is. In the meantime, we are limiting this to claude-vscode for now to
+  // what the best way to do this is. In the meantime, we are limiting this to deepcli-vscode for now to
   // unbreak the VSCode extension for certain enterprise customers who have enterprise MCP config enabled.
-  // https://anthropic.slack.com/archives/C093UA0KLD7/p1764975463670109
+  // https://nexusai.slack.com/archives/C093UA0KLD7/p1764975463670109
   return Object.values(configs).every(
-    c => c.type === 'sdk' && c.name === 'claude-vscode',
+    c => c.type === 'sdk' && c.name === 'deepcli-vscode',
   )
 }
 

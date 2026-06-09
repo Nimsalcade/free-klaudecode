@@ -386,11 +386,11 @@ export async function* runAgent({
   // CLAUDE.md — the main agent has full context and interprets their output.
   // Dropping claudeMd here saves ~5-15 Gtok/week across 34M+ Explore spawns.
   // Explicit override.userContext from callers is preserved untouched.
-  // Kill-switch defaults true; flip tengu_slim_subagent_claudemd=false to revert.
+  // Kill-switch defaults true; flip tengu_slim_subagent_deepclimd=false to revert.
   const shouldOmitClaudeMd =
     agentDefinition.omitClaudeMd &&
     !override?.userContext &&
-    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slim_subagent_claudemd', true)
+    getFeatureValue_CACHED_MAY_BE_STALE('tengu_slim_subagent_deepclimd', true)
   const { claudeMd: _omittedClaudeMd, ...userContextNoClaudeMd } =
     baseUserContext
   const resolvedUserContext = shouldOmitClaudeMd

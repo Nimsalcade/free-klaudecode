@@ -4,7 +4,7 @@ import { execa } from 'execa'
 import { mkdir, stat } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { join } from 'path'
-import { CLAUDE_AI_PROFILE_SCOPE } from 'src/constants/oauth.js'
+import { DEEPCLI_AI_PROFILE_SCOPE } from 'src/constants/oauth.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -85,17 +85,17 @@ import { clearToolSchemaCache } from './toolSchemaCache.js'
 const DEFAULT_API_KEY_HELPER_TTL = 5 * 60 * 1000
 
 /**
- * CCR and Claude Desktop spawn the CLI with OAuth and should never fall back
- * to the user's ~/.claude/settings.json API-key config (apiKeyHelper,
+ * CCR and DeepCLI Desktop spawn the CLI with OAuth and should never fall back
+ * to the user's ~/.deepcli/settings.json API-key config (apiKeyHelper,
  * env.ANTHROPIC_API_KEY, env.ANTHROPIC_AUTH_TOKEN). Those settings exist for
  * the user's terminal CLI, not managed sessions. Without this guard, a user
- * who runs `claude` in their terminal with an API key sees every CCD session
+ * who runs `deepcli` in their terminal with an API key sees every CCD session
  * also use that key — and fail if it's stale/wrong-org.
  */
 function isManagedOAuthContext(): boolean {
   return (
-    isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) ||
-    process.env.CLAUDE_CODE_ENTRYPOINT === 'claude-desktop'
+    isEnvTruthy(process.env.DEEPCLI_REMOTE) ||
+    process.env.DEEPCLI_ENTRYPOINT === 'deepcli-desktop'
   )
 }
 
@@ -105,15 +105,15 @@ export function isAnthropicAuthEnabled(): boolean {
   // --bare: API-key-only, never OAuth.
   if (isBareMode()) return false
 
-  // `claude ssh` remote: ANTHROPIC_UNIX_SOCKET tunnels API calls through a
-  // local auth-injecting proxy. The launcher sets CLAUDE_CODE_OAUTH_TOKEN as a
+  // `deepcli ssh` remote: ANTHROPIC_UNIX_SOCKET tunnels API calls through a
+  // local auth-injecting proxy. The launcher sets DEEPCLI_OAUTH_TOKEN as a
   // placeholder iff the local side is a subscriber (so the remote includes the
   // oauth-2025 beta header to match what the proxy will inject). The remote's
   // ~/.claude settings (apiKeyHelper, settings.env.ANTHROPIC_API_KEY) MUST NOT
   // flip this — they'd cause a header mismatch with the proxy and a bogus
   // "invalid x-api-key" from the API. See src/ssh/sshAuthProxy.ts.
   if (process.env.ANTHROPIC_UNIX_SOCKET) {
-    return !!process.env.CLAUDE_CODE_OAUTH_TOKEN
+    return !!process.env.DEEPCLI_OAUTH_TOKEN
   }
 
   const is3P = providerBringsOwnCredentials()
@@ -125,7 +125,7 @@ export function isAnthropicAuthEnabled(): boolean {
   const hasExternalAuthToken =
     process.env.ANTHROPIC_AUTH_TOKEN ||
     apiKeyHelper ||
-    process.env.CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR
+    process.env.DEEPCLI_API_KEY_FILE_DESCRIPTOR
 
   // Check if API key is from an external source (not managed by /login)
   const { source: apiKeySource } = getAnthropicApiKeyWithSource({
@@ -134,12 +134,12 @@ export function isAnthropicAuthEnabled(): boolean {
   const hasExternalApiKey =
     apiKeySource === 'ANTHROPIC_API_KEY' || apiKeySource === 'apiKeyHelper'
 
-  // Disable Anthropic auth if:
+  // Disable NexusAI auth if:
   // 1. Using 3rd party services (Bedrock/Vertex/Foundry)
   // 2. User has an external API key (regardless of proxy configuration)
   // 3. User has an external auth token (regardless of proxy configuration)
   // this may cause issues if users have complex proxy / gateway "client-side creds" auth scenarios,
-  // e.g. if they want to set X-Api-Key to a gateway key but use Anthropic OAuth for the Authorization
+  // e.g. if they want to set X-Api-Key to a gateway key but use NexusAI OAuth for the Authorization
   // if we get reports of that, we should probably add an env var to force OAuth enablement
   const shouldDisableAuth =
     is3P ||
@@ -166,8 +166,8 @@ export function getAuthTokenSource() {
     return { source: 'ANTHROPIC_AUTH_TOKEN' as const, hasToken: true }
   }
 
-  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
-    return { source: 'CLAUDE_CODE_OAUTH_TOKEN' as const, hasToken: true }
+  if (process.env.DEEPCLI_OAUTH_TOKEN) {
+    return { source: 'DEEPCLI_OAUTH_TOKEN' as const, hasToken: true }
   }
 
   // Check for OAuth token from file descriptor (or its CCR disk fallback)
@@ -179,9 +179,9 @@ export function getAuthTokenSource() {
     // doesn't exist. Call sites fall through correctly — the new source is
     // !== 'none' (cli/handlers/auth.ts → oauth_token) and not in the
     // isEnvVarToken set (auth.ts:1844 → generic re-login message).
-    if (process.env.CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR) {
+    if (process.env.DEEPCLI_OAUTH_TOKEN_FILE_DESCRIPTOR) {
       return {
-        source: 'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR' as const,
+        source: 'DEEPCLI_OAUTH_TOKEN_FILE_DESCRIPTOR' as const,
         hasToken: true,
       }
     }
@@ -249,12 +249,12 @@ export function getAnthropicApiKeyWithSource(
   }
 
   // On homespace, don't use ANTHROPIC_API_KEY (use Console key instead)
-  // https://anthropic.slack.com/archives/C08428WSLKV/p1747331773214779
+  // https://nexusai.slack.com/archives/C08428WSLKV/p1747331773214779
   const apiKeyEnv = isRunningOnHomespace()
     ? undefined
     : process.env.ANTHROPIC_API_KEY
 
-  // Always check for direct environment variable when the user ran claude --print.
+  // Always check for direct environment variable when the user ran deepcli --print.
   // This is useful for CI, etc.
   if (preferThirdPartyAuthentication() && apiKeyEnv) {
     return {
@@ -275,8 +275,8 @@ export function getAnthropicApiKeyWithSource(
 
     if (
       !apiKeyEnv &&
-      !process.env.CLAUDE_CODE_OAUTH_TOKEN &&
-      !process.env.CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR
+      !process.env.DEEPCLI_OAUTH_TOKEN &&
+      !process.env.DEEPCLI_OAUTH_TOKEN_FILE_DESCRIPTOR
     ) {
       throw new Error(
         'ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN env var is required',
@@ -351,7 +351,7 @@ export function getAnthropicApiKeyWithSource(
 /**
  * Get the configured apiKeyHelper from settings.
  * In bare mode, only the --settings flag source is consulted — apiKeyHelper
- * from ~/.claude/settings.json or project settings is ignored.
+ * from ~/.deepcli/settings.json or project settings is ignored.
  */
 export function getConfiguredApiKeyHelper(): string | undefined {
   if (isBareMode()) {
@@ -430,11 +430,11 @@ export function isAwsCredentialExportFromProjectSettings(): boolean {
 
 /**
  * Calculate TTL in milliseconds for the API key helper cache
- * Uses CLAUDE_CODE_API_KEY_HELPER_TTL_MS env var if set and valid,
+ * Uses DEEPCLI_API_KEY_HELPER_TTL_MS env var if set and valid,
  * otherwise defaults to 5 minutes
  */
 export function calculateApiKeyHelperTTL(): number {
-  const envTtl = process.env.CLAUDE_CODE_API_KEY_HELPER_TTL_MS
+  const envTtl = process.env.DEEPCLI_API_KEY_HELPER_TTL_MS
 
   if (envTtl) {
     const parsed = parseInt(envTtl, 10)
@@ -442,7 +442,7 @@ export function calculateApiKeyHelperTTL(): number {
       return parsed
     }
     logForDebugging(
-      `Found CLAUDE_CODE_API_KEY_HELPER_TTL_MS env var, but it was not a valid number. Got ${envTtl}`,
+      `Found DEEPCLI_API_KEY_HELPER_TTL_MS env var, but it was not a valid number. Got ${envTtl}`,
       { level: 'error' },
     )
   }
@@ -688,7 +688,7 @@ export function refreshAwsAuth(awsAuthRefresh: string): Promise<boolean> {
               'AWS auth refresh timed out after 3 minutes. Run your auth command manually in a separate terminal.',
             )
           : chalk.red(
-              'Error running awsAuthRefresh (in settings or ~/.claude.json):',
+              'Error running awsAuthRefresh (in settings or ~/.deepcli.json):',
             )
         // biome-ignore lint/suspicious/noConsole:: intentional console output
         console.error(message)
@@ -766,7 +766,7 @@ async function getAwsCredsFromCredentialExport(): Promise<{
       }
     } catch (e) {
       const message = chalk.red(
-        'Error getting AWS credentials from awsCredentialExport (in settings or ~/.claude.json):',
+        'Error getting AWS credentials from awsCredentialExport (in settings or ~/.deepcli.json):',
       )
       if (e instanceof Error) {
         // biome-ignore lint/suspicious/noConsole:: intentional console output
@@ -956,7 +956,7 @@ export function refreshGcpAuth(gcpAuthRefresh: string): Promise<boolean> {
               'GCP auth refresh timed out after 3 minutes. Run your auth command manually in a separate terminal.',
             )
           : chalk.red(
-              'Error running gcpAuthRefresh (in settings or ~/.claude.json):',
+              'Error running gcpAuthRefresh (in settings or ~/.deepcli.json):',
             )
         // biome-ignore lint/suspicious/noConsole:: intentional console output
         console.error(message)
@@ -1258,10 +1258,10 @@ export const getClaudeAIOAuthTokens = memoize((): OAuthTokens | null => {
   if (isBareMode()) return null
 
   // Check for force-set OAuth token from environment variable
-  if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
+  if (process.env.DEEPCLI_OAUTH_TOKEN) {
     // Return an inference-only token (unknown refresh and expiry)
     return {
-      accessToken: process.env.CLAUDE_CODE_OAUTH_TOKEN,
+      accessToken: process.env.DEEPCLI_OAUTH_TOKEN,
       refreshToken: null,
       expiresAt: null,
       scopes: ['user:inference'],
@@ -1312,14 +1312,14 @@ export function clearOAuthTokenCache(): void {
 }
 
 // ── Codex OAuth token storage ────────────────────────────────────────────────
-// These functions manage OpenAI Codex tokens separately from Anthropic's
+// These functions manage OpenAI Codex tokens separately from NexusAI's
 // claudeAiOauth keychain entry. Codex tokens are stored in the GlobalConfig
 // JSON file (not in the system keychain) and are only ever sent to OpenAI's
-// API, never to Anthropic's servers.
+// API, never to NexusAI's servers.
 
 /**
  * Saves the OpenAI Codex OAuth tokens to GlobalConfig.
- * Does NOT overwrite or interfere with Anthropic's claudeAiOauth block.
+ * Does NOT overwrite or interfere with NexusAI's claudeAiOauth block.
  */
 export function saveCodexOAuthTokens(tokens: CodexTokens): void {
   saveGlobalConfig((cfg) => ({
@@ -1458,7 +1458,7 @@ export async function getClaudeAIOAuthTokensAsync(): Promise<OAuthTokens | null>
 
   // Env var and FD tokens are sync and don't hit the keychain
   if (
-    process.env.CLAUDE_CODE_OAUTH_TOKEN ||
+    process.env.DEEPCLI_OAUTH_TOKEN ||
     getOAuthTokenFromFileDescriptor()
   ) {
     return getClaudeAIOAuthTokens()
@@ -1587,7 +1587,7 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
     logEvent('tengu_oauth_token_refresh_starting', {})
     const refreshedTokens = await refreshOAuthToken(lockedTokens.refreshToken, {
       // For Claude.ai subscribers, omit scopes so the default
-      // CLAUDE_AI_OAUTH_SCOPES applies — this allows scope expansion
+      // DEEPCLI_AI_OAUTH_SCOPES applies — this allows scope expansion
       // (e.g. adding user:file_upload) on refresh without re-login.
       scopes: shouldUseClaudeAIAuth(lockedTokens.scopes)
         ? undefined
@@ -1647,7 +1647,7 @@ export function isCodexSubscriber(): boolean {
  */
 export function hasProfileScope(): boolean {
   return (
-    getClaudeAIOAuthTokens()?.scopes?.includes(CLAUDE_AI_PROFILE_SCOPE) ?? false
+    getClaudeAIOAuthTokens()?.scopes?.includes(DEEPCLI_AI_PROFILE_SCOPE) ?? false
   )
 }
 
@@ -1674,7 +1674,7 @@ export function is1PApiCustomer(): boolean {
 }
 
 /**
- * Gets OAuth account information when Anthropic auth is enabled.
+ * Gets OAuth account information when NexusAI auth is enabled.
  * Returns undefined when using external API keys or third-party services.
  */
 export function getOauthAccountInfo(): AccountInfo | undefined {
@@ -1683,13 +1683,13 @@ export function getOauthAccountInfo(): AccountInfo | undefined {
 
 /**
  * Checks if overage/extra usage provisioning is allowed for this organization.
- * This mirrors the logic in apps/claude-ai `useIsOverageProvisioningAllowed` hook as closely as possible.
+ * This mirrors the logic in apps/deepcli-ai `useIsOverageProvisioningAllowed` hook as closely as possible.
  */
 export function isOverageProvisioningAllowed(): boolean {
   const accountInfo = getOauthAccountInfo()
   const billingType = accountInfo?.billingType
 
-  // Must be a Claude subscriber with a supported subscription type
+  // Must be a DeepCLI subscriber with a supported subscription type
   if (!isClaudeAISubscriber() || !billingType) {
     return false
   }
@@ -1781,21 +1781,21 @@ export function getSubscriptionName(): string {
 
   switch (subscriptionType) {
     case 'enterprise':
-      return 'Claude Enterprise'
+      return 'DeepCLI Enterprise'
     case 'team':
-      return 'Claude Team'
+      return 'DeepCLI Team'
     case 'max':
-      return 'Claude Max'
+      return 'DeepCLI Max'
     case 'pro':
-      return 'Claude Pro'
+      return 'DeepCLI Pro'
     default:
-      return 'Claude API'
+      return 'DeepCLI API'
   }
 }
 
 /**
  * Check if using a provider that brings its own credentials
- * (Bedrock, Vertex, Foundry, or local) rather than an Anthropic login.
+ * (Bedrock, Vertex, Foundry, or local) rather than an NexusAI login.
  */
 export function isUsing3PServices(): boolean {
   return providerBringsOwnCredentials()
@@ -1840,7 +1840,7 @@ export function getOtelHeadersFromHelper(): Record<string, string> {
 
   // Return cached headers if still valid (debounce)
   const debounceMs = parseInt(
-    process.env.CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS ||
+    process.env.DEEPCLI_OTEL_HEADERS_HELPER_DEBOUNCE_MS ||
       DEFAULT_OTEL_HEADERS_DEBOUNCE_MS.toString(),
   )
   if (
@@ -1926,15 +1926,15 @@ export type UserAccountInfo = {
 
 export function getAccountInformation() {
   const apiProvider = getAPIProvider()
-  // Only provide account info for first-party Anthropic API
+  // Only provide account info for first-party NexusAI API
   if (apiProvider !== 'firstParty') {
     return undefined
   }
   const { source: authTokenSource } = getAuthTokenSource()
   const accountInfo: UserAccountInfo = {}
   if (
-    authTokenSource === 'CLAUDE_CODE_OAUTH_TOKEN' ||
-    authTokenSource === 'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR'
+    authTokenSource === 'DEEPCLI_OAUTH_TOKEN' ||
+    authTokenSource === 'DEEPCLI_OAUTH_TOKEN_FILE_DESCRIPTOR'
   ) {
     accountInfo.tokenSource = authTokenSource
   } else if (isClaudeAISubscriber()) {
@@ -1985,7 +1985,7 @@ export type OrgValidationResult =
  * token's org (network error, missing profile data), validation fails.
  */
 export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
-  // `claude ssh` remote: real auth lives on the local machine and is injected
+  // `deepcli ssh` remote: real auth lives on the local machine and is injected
   // by the proxy. The placeholder token can't be validated against the profile
   // endpoint. The local side already ran this check before establishing the session.
   if (process.env.ANTHROPIC_UNIX_SOCKET) {
@@ -2013,11 +2013,11 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
 
   // Always fetch the authoritative org UUID from the profile endpoint.
   // Even keychain-sourced tokens verify server-side: the cached org UUID
-  // in ~/.claude.json is user-writable and cannot be trusted.
+  // in ~/.deepcli.json is user-writable and cannot be trusted.
   const { source } = getAuthTokenSource()
   const isEnvVarToken =
-    source === 'CLAUDE_CODE_OAUTH_TOKEN' ||
-    source === 'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR'
+    source === 'DEEPCLI_OAUTH_TOKEN' ||
+    source === 'DEEPCLI_OAUTH_TOKEN_FILE_DESCRIPTOR'
 
   const profile = await getOauthProfileFromOauthToken(tokens.accessToken)
   if (!profile) {
@@ -2028,8 +2028,8 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
         `Unable to verify organization for the current authentication token.\n` +
         `This machine requires organization ${requiredOrgUuid} but the profile could not be fetched.\n` +
         `This may be a network error, or the token may lack the user:profile scope required for\n` +
-        `verification (tokens from 'claude setup-token' do not include this scope).\n` +
-        `Try again, or obtain a full-scope token via 'claude auth login'.`,
+        `verification (tokens from 'deepcli setup-token' do not include this scope).\n` +
+        `Try again, or obtain a full-scope token via 'deepcli auth login'.`,
     }
   }
 
@@ -2040,9 +2040,9 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
 
   if (isEnvVarToken) {
     const envVarName =
-      source === 'CLAUDE_CODE_OAUTH_TOKEN'
-        ? 'CLAUDE_CODE_OAUTH_TOKEN'
-        : 'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR'
+      source === 'DEEPCLI_OAUTH_TOKEN'
+        ? 'DEEPCLI_OAUTH_TOKEN'
+        : 'DEEPCLI_OAUTH_TOKEN_FILE_DESCRIPTOR'
     return {
       valid: false,
       message:
@@ -2059,7 +2059,7 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
     message:
       `Your authentication token belongs to organization ${tokenOrgUuid},\n` +
       `but this machine requires organization ${requiredOrgUuid}.\n\n` +
-      `Please log in with the correct organization: claude auth login`,
+      `Please log in with the correct organization: deepcli auth login`,
   }
 }
 

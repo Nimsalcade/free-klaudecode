@@ -6,9 +6,9 @@ import { isEnvDefinedFalsy } from '../utils/envUtils.js'
 import { getAPIProvider } from '../utils/model/providers.js'
 import { getWorkload } from '../utils/workloadContext.js'
 
-const DEFAULT_PREFIX = `You are Claude Code, Anthropic's official CLI for Claude.`
-const AGENT_SDK_CLAUDE_CODE_PRESET_PREFIX = `You are Claude Code, Anthropic's official CLI for Claude, running within the Claude Agent SDK.`
-const AGENT_SDK_PREFIX = `You are a Claude agent, built on Anthropic's Claude Agent SDK.`
+const DEFAULT_PREFIX = `You are DeepCLI, NexusAI's official CLI for DeepCLI.`
+const AGENT_SDK_CLAUDE_CODE_PRESET_PREFIX = `You are DeepCLI, NexusAI's official CLI for DeepCLI, running within the DeepCLI Agent SDK.`
+const AGENT_SDK_PREFIX = `You are a DeepCLI agent, built on NexusAI's DeepCLI Agent SDK.`
 
 const CLI_SYSPROMPT_PREFIX_VALUES = [
   DEFAULT_PREFIX,
@@ -49,7 +49,7 @@ export function getCLISyspromptPrefix(options?: {
  * Enabled by default, can be disabled via env var or GrowthBook killswitch.
  */
 function isAttributionHeaderEnabled(): boolean {
-  if (isEnvDefinedFalsy(process.env.CLAUDE_CODE_ATTRIBUTION_HEADER)) {
+  if (isEnvDefinedFalsy(process.env.DEEPCLI_ATTRIBUTION_HEADER)) {
     return false
   }
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_attribution_header', true)
@@ -71,7 +71,7 @@ export function getAttributionHeader(fingerprint: string): string {
   }
 
   const version = `${MACRO.VERSION}.${fingerprint}`
-  const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT ?? 'unknown'
+  const entrypoint = process.env.DEEPCLI_ENTRYPOINT ?? 'unknown'
 
   const cch = ' cch=00000;'
   // cc_workload: turn-scoped hint so the API can route e.g. cron-initiated
@@ -82,7 +82,7 @@ export function getAttributionHeader(fingerprint: string): string {
   // fields so old API deploys silently ignore this.
   const workload = getWorkload()
   const workloadPair = workload ? ` cc_workload=${workload};` : ''
-  const header = `x-anthropic-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};${cch}${workloadPair}`
+  const header = `x-nexusai-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};${cch}${workloadPair}`
 
   logForDebugging(`attribution header ${header}`)
   return header

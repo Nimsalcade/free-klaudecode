@@ -1,7 +1,7 @@
 import { c as _c } from "react/compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: ANT-ONLY import markers must not be reordered
 import * as React from 'react';
-import { Box, Text, color } from '../../ink.js';
+import { Box, Text, color, useInput } from '../../ink.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { stringWidth } from '../../ink/stringWidth.js';
 import { getLayoutMode, calculateLayoutDimensions, calculateOptimalLeftWidth, formatWelcomeMessage, truncatePath, getRecentActivitySync, getRecentReleaseNotesSync, getLogoDisplayData } from '../../utils/logoV2Utils.js';
@@ -39,10 +39,11 @@ import { SandboxManager } from 'src/utils/sandbox/sandbox-adapter.js';
 import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from './GuestPassesUpsell.js';
 import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from './OverageCreditUpsell.js';
 import { plural } from '../../utils/stringUtils.js';
-import { useAppState } from '../../state/AppState.js';
+import { useAppState, useSetAppState } from '../../state/AppState.js';
 import { getEffortSuffix } from '../../utils/effort.js';
 import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { renderModelSetting } from '../../utils/model/model.js';
+import { Dashboard } from '../Dashboard.js';
 const LEFT_PANEL_MAX_WIDTH = 50;
 export function LogoV2() {
   const $ = _c(94);
@@ -71,6 +72,12 @@ export function LogoV2() {
   const showOverageCreditUpsell = useShowOverageCreditUpsell();
   const agent = useAppState(_temp);
   const effortValue = useAppState(_temp2);
+  const setAppState = useSetAppState();
+  useInput((input, key) => {
+    if (input === 's' && key.ctrl) {
+      setAppState(prev => ({ ...prev, dashboardVisible: !prev.dashboardVisible }));
+    }
+  });
   const config = getGlobalConfig();
   let changelog;
   try {
@@ -115,7 +122,7 @@ export function LogoV2() {
   useEffect(t2, t3);
   let t4;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = !hasReleaseNotes && !showOnboarding && !isEnvTruthy(process.env.CLAUDE_CODE_FORCE_FULL_LOGO);
+    t4 = !hasReleaseNotes && !showOnboarding && !isEnvTruthy(process.env.DEEPCLI_FORCE_FULL_LOGO);
     $[5] = t4;
   } else {
     t4 = $[5];
@@ -176,7 +183,7 @@ export function LogoV2() {
     t10 = $[14];
   }
   const modelDisplayName = t10;
-  if (!hasReleaseNotes && !showOnboarding && !isEnvTruthy(process.env.CLAUDE_CODE_FORCE_FULL_LOGO)) {
+  if (!hasReleaseNotes && !showOnboarding && !isEnvTruthy(process.env.DEEPCLI_FORCE_FULL_LOGO)) {
     let t11;
     let t12;
     let t13;
@@ -191,7 +198,7 @@ export function LogoV2() {
       t14 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
       t15 = isDebugMode() && <Box paddingLeft={2} flexDirection="column"><Text color="warning">Debug mode enabled</Text><Text dimColor={true}>Logging to: {isDebugToStdErr() ? "stderr" : getDebugLogPath()}</Text></Box>;
       t16 = <EmergencyTip />;
-      t17 = process.env.CLAUDE_CODE_TMUX_SESSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>tmux session: {process.env.CLAUDE_CODE_TMUX_SESSION}</Text><Text dimColor={true}>{process.env.CLAUDE_CODE_TMUX_PREFIX_CONFLICTS ? `Detach: ${process.env.CLAUDE_CODE_TMUX_PREFIX} ${process.env.CLAUDE_CODE_TMUX_PREFIX} d (press prefix twice - Claude uses ${process.env.CLAUDE_CODE_TMUX_PREFIX})` : `Detach: ${process.env.CLAUDE_CODE_TMUX_PREFIX} d`}</Text></Box>;
+      t17 = process.env.DEEPCLI_TMUX_SESSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>tmux session: {process.env.DEEPCLI_TMUX_SESSION}</Text><Text dimColor={true}>{process.env.DEEPCLI_TMUX_PREFIX_CONFLICTS ? `Detach: ${process.env.DEEPCLI_TMUX_PREFIX} ${process.env.DEEPCLI_TMUX_PREFIX} d (press prefix twice - DeepCLI uses ${process.env.DEEPCLI_TMUX_PREFIX})` : `Detach: ${process.env.DEEPCLI_TMUX_PREFIX} d`}</Text></Box>;
       $[15] = t11;
       $[16] = t12;
       $[17] = t13;
@@ -248,8 +255,8 @@ export function LogoV2() {
   }
   const layoutMode = getLayoutMode(columns);
   const userTheme = resolveThemeSetting(getGlobalConfig().theme);
-  const borderTitle = ` ${color("startupAccent", userTheme)("Free Code")} ${color("inactive", userTheme)(`v${version}`)} `;
-  const compactBorderTitle = color("startupAccent", userTheme)(" Free Code ");
+  const borderTitle = ` ${color("startupAccent", userTheme)("DeepCLI")} ${color("inactive", userTheme)(`v${version}`)} `;
+  const compactBorderTitle = color("startupAccent", userTheme)(" DeepCLI ");
   if (layoutMode === "compact") {
     let welcomeMessage = formatWelcomeMessage(username);
     if (stringWidth(welcomeMessage) > columns - 4) {
@@ -326,7 +333,7 @@ export function LogoV2() {
       t18 = $[42];
       t19 = $[43];
     }
-    return <><OffscreenFreeze><Box flexDirection="column" borderStyle="round" borderColor="startupAccent" borderText={t11} paddingX={1} paddingY={1} alignItems="center" width={columns}><Text bold={true}>{welcomeMessage}</Text>{t12}{t13}<Text dimColor={true}>{billingType}</Text><Text dimColor={true}>{agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd}</Text></Box></OffscreenFreeze>{t14}{t15}{t16}{t17}{t18}{t19}</>;
+    return <><OffscreenFreeze><Box flexDirection="column" borderStyle="double" borderColor="startupAccent" borderText={t11} paddingX={1} paddingY={1} alignItems="center" width={columns}><Text bold={true}>{welcomeMessage}</Text>{t12}{t13}<Text dimColor={true}>{billingType}</Text><Text dimColor={true}>{agentName ? `@${agentName} · ${truncatedCwd}` : truncatedCwd}</Text></Box></OffscreenFreeze>{t14}{t15}{t16}{t17}{t18}{t19}<Dashboard /></>;
   }
   const welcomeMessage_0 = formatWelcomeMessage(username);
   const modelLine = !process.env.IS_DEMO && config.oauthAccount?.organizationName ? `${modelDisplayName} · ${billingType} · ${config.oauthAccount.organizationName}` : `${modelDisplayName} · ${billingType}`;
@@ -341,7 +348,7 @@ export function LogoV2() {
   const T0 = OffscreenFreeze;
   const T1 = Box;
   const t11 = "column";
-  const t12 = "round";
+  const t12 = "double";
   const t13 = "startupAccent";
   let t14;
   if ($[44] !== borderTitle) {
@@ -462,7 +469,7 @@ export function LogoV2() {
     t31 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
     t32 = isDebugMode() && <Box paddingLeft={2} flexDirection="column"><Text color="warning">Debug mode enabled</Text><Text dimColor={true}>Logging to: {isDebugToStdErr() ? "stderr" : getDebugLogPath()}</Text></Box>;
     t33 = <EmergencyTip />;
-    t34 = process.env.CLAUDE_CODE_TMUX_SESSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>tmux session: {process.env.CLAUDE_CODE_TMUX_SESSION}</Text><Text dimColor={true}>{process.env.CLAUDE_CODE_TMUX_PREFIX_CONFLICTS ? `Detach: ${process.env.CLAUDE_CODE_TMUX_PREFIX} ${process.env.CLAUDE_CODE_TMUX_PREFIX} d (press prefix twice - Claude uses ${process.env.CLAUDE_CODE_TMUX_PREFIX})` : `Detach: ${process.env.CLAUDE_CODE_TMUX_PREFIX} d`}</Text></Box>;
+    t34 = process.env.DEEPCLI_TMUX_SESSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>tmux session: {process.env.DEEPCLI_TMUX_SESSION}</Text><Text dimColor={true}>{process.env.DEEPCLI_TMUX_PREFIX_CONFLICTS ? `Detach: ${process.env.DEEPCLI_TMUX_PREFIX} ${process.env.DEEPCLI_TMUX_PREFIX} d (press prefix twice - DeepCLI uses ${process.env.DEEPCLI_TMUX_PREFIX})` : `Detach: ${process.env.DEEPCLI_TMUX_PREFIX} d`}</Text></Box>;
     $[75] = t29;
     $[76] = t30;
     $[77] = t31;
@@ -515,7 +522,7 @@ export function LogoV2() {
   }
   let t41;
   if ($[90] !== t28 || $[91] !== t35 || $[92] !== t36) {
-    t41 = <>{t28}{t29}{t30}{t31}{t32}{t33}{t34}{t35}{t36}{t37}{t38}{t39}{t40}</>;
+    t41 = <>{t28}{t29}{t30}{t31}{t32}{t33}{t34}{t35}{t36}{t37}{t38}{t39}{t40}<Dashboard /></>;
     $[90] = t28;
     $[91] = t35;
     $[92] = t36;

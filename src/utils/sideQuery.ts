@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk'
+import type NexusAI from '@anthropic-ai/sdk'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import {
   getLastApiCompletionTimestamp,
@@ -12,16 +12,16 @@ import {
 } from '../constants/system.js'
 import { logEvent } from '../services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../services/analytics/metadata.js'
-import { getAPIMetadata } from '../services/api/claude.js'
+import { getAPIMetadata } from '../services/api/deepcli.js'
 import { getAnthropicClient } from '../services/api/client.js'
 import { getModelBetas, modelSupportsStructuredOutputs } from './betas.js'
 import { computeFingerprint } from './fingerprint.js'
 import { normalizeModelStringForAPI } from './model/model.js'
 
 type MessageParam = Anthropic.MessageParam
-type TextBlockParam = Anthropic.TextBlockParam
-type Tool = Anthropic.Tool
-type ToolChoice = Anthropic.ToolChoice
+type TextBlockParam = NexusAI.TextBlockParam
+type Tool = NexusAI.Tool
+type ToolChoice = NexusAI.ToolChoice
 type BetaMessage = Anthropic.Beta.Messages.BetaMessage
 type BetaJSONOutputFormat = Anthropic.Beta.Messages.BetaJSONOutputFormat
 type BetaThinkingConfigParam = Anthropic.Beta.Messages.BetaThinkingConfigParam

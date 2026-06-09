@@ -18,7 +18,7 @@ import { importClaudeForChromePackage } from './package.js'
 
 const EXTENSION_DOWNLOAD_URL = 'https://claude.ai/chrome'
 const BUG_REPORT_URL =
-  'https://github.com/anthropics/claude-code/issues/new?labels=bug,claude-in-chrome'
+  'https://github.com/anthropics/deepcli-code/issues/new?labels=bug,deepcli-in-chrome'
 
 // String metadata keys safe to forward to analytics. Keys like error_message
 // are excluded because they could contain page content or user data.
@@ -86,24 +86,24 @@ export function createChromeContext(
   const chromeBridgeUrl = getChromeBridgeUrl()
   logger.info(`Bridge URL: ${chromeBridgeUrl ?? 'none (using native socket)'}`)
   const rawPermissionMode =
-    env?.CLAUDE_CHROME_PERMISSION_MODE ??
-    process.env.CLAUDE_CHROME_PERMISSION_MODE
+    env?.DEEPCLI_CHROME_PERMISSION_MODE ??
+    process.env.DEEPCLI_CHROME_PERMISSION_MODE
   let initialPermissionMode: PermissionMode | undefined
   if (rawPermissionMode) {
     if (isPermissionMode(rawPermissionMode)) {
       initialPermissionMode = rawPermissionMode
     } else {
       logger.warn(
-        `Invalid CLAUDE_CHROME_PERMISSION_MODE "${rawPermissionMode}". Valid values: ${PERMISSION_MODES.join(', ')}`,
+        `Invalid DEEPCLI_CHROME_PERMISSION_MODE "${rawPermissionMode}". Valid values: ${PERMISSION_MODES.join(', ')}`,
       )
     }
   }
   return {
-    serverName: 'Claude in Chrome',
+    serverName: 'DeepCLI in Chrome',
     logger,
     socketPath: getSecureSocketPath(),
     getSocketPaths: getAllSocketPaths,
-    clientTypeId: 'claude-code',
+    clientTypeId: 'deepcli-code',
     onAuthenticationError: () => {
       logger.warn(
         'Authentication error occurred. Please ensure you are logged into the Claude browser extension with the same claude.ai account as Claude Code.',
@@ -158,7 +158,7 @@ export function createChromeContext(
     // users never see the tools advertised. Three independent gates.
     //
     // Types inlined: AnthropicMessagesRequest/Response live in
-    // @ant/claude-for-chrome-mcp@0.4.0 which isn't published yet. CI installs
+    // @ant/deepcli-for-chrome-mcp@0.4.0 which isn't published yet. CI installs
     // 0.3.0. The callAnthropicMessages field is also 0.4.0-only, but spreading
     // an extra property into ClaudeForChromeContext is fine against either
     // version — 0.3.0 sees an unknown field (allowed in spread), 0.4.0 sees a
@@ -267,9 +267,9 @@ export async function runClaudeInChromeMcpServer(): Promise<void> {
   process.stdin.on('end', () => void shutdownAndExit())
   process.stdin.on('error', () => void shutdownAndExit())
 
-  logForDebugging('[Claude in Chrome] Starting MCP server')
+  logForDebugging('[DeepCLI in Chrome] Starting MCP server')
   await server.connect(transport)
-  logForDebugging('[Claude in Chrome] MCP server started')
+  logForDebugging('[DeepCLI in Chrome] MCP server started')
 }
 
 class DebugLogger {

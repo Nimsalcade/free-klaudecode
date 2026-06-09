@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type Anthropic from '@anthropic-ai/sdk'
+import type NexusAI from '@anthropic-ai/sdk'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
@@ -13,7 +13,7 @@ import {
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../services/analytics/growthbook.js'
 import { logEvent } from '../../services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/metadata.js'
-import { getCacheControl } from '../../services/api/claude.js'
+import { getCacheControl } from '../../services/api/deepcli.js'
 import { parsePromptTooLongTokenCounts } from '../../services/api/errors.js'
 import { getDefaultMaxRetries } from '../../services/api/withRetry.js'
 import type { Tool, ToolPermissionContext, Tools } from '../../Tool.js'
@@ -56,7 +56,7 @@ const BASE_PROMPT: string = feature('TRANSCRIPT_CLASSIFIER')
   : ''
 
 // External template is loaded separately so it's available for
-// `claude auto-mode defaults` even in ant builds. Ant builds use
+// `deepcli auto-mode defaults` even in ant builds. Ant builds use
 // permissions_anthropic.txt at runtime but should dump external defaults.
 const EXTERNAL_PERMISSIONS_TEMPLATE: string = feature('TRANSCRIPT_CLASSIFIER')
   ? txtRequire(require('./yolo-classifier-prompts/permissions_external.txt'))
@@ -94,8 +94,8 @@ export type AutoModeRules = {
  * <user_*_to_replace> tags (user settings REPLACE these defaults), so the
  * captured tag contents ARE the defaults. Bullet items are single-line in the
  * template; each line starting with `- ` becomes one array entry.
- * Used by `claude auto-mode defaults`. Always returns external defaults,
- * never the Anthropic-internal template.
+ * Used by `deepcli auto-mode defaults`. Always returns external defaults,
+ * never the NexusAI-internal template.
  */
 export function getDefaultExternalAutoModeRules(): AutoModeRules {
   return {
@@ -119,7 +119,7 @@ function extractTaggedBullets(tagName: string): string[] {
 
 /**
  * Returns the full external classifier system prompt with default rules (no user
- * overrides). Used by `claude auto-mode critique` to show the model how the
+ * overrides). Used by `deepcli auto-mode critique` to show the model how the
  * classifier sees its instructions.
  */
 export function buildDefaultExternalSystemPrompt(): string {
@@ -147,7 +147,7 @@ function getAutoModeDumpDir(): string {
 
 /**
  * Dump the auto mode classifier request and response bodies to the per-user
- * claude temp directory when CLAUDE_CODE_DUMP_AUTO_MODE is set. Files are
+ * deepcli temp directory when DEEPCLI_DUMP_AUTO_MODE is set. Files are
  * named by unix timestamp: {timestamp}[.{suffix}].req.json and .res.json
  */
 async function maybeDumpAutoMode(
@@ -157,7 +157,7 @@ async function maybeDumpAutoMode(
   suffix?: string,
 ): Promise<void> {
   if (process.env.USER_TYPE !== 'ant') return
-  if (!isEnvTruthy(process.env.CLAUDE_CODE_DUMP_AUTO_MODE)) return
+  if (!isEnvTruthy(process.env.DEEPCLI_DUMP_AUTO_MODE)) return
   const base = suffix ? `${timestamp}.${suffix}` : `${timestamp}`
   try {
     await mkdir(getAutoModeDumpDir(), { recursive: true })
@@ -205,7 +205,7 @@ export function getAutoModeClassifierTranscript(): string | null {
 
 /**
  * Dump classifier input prompts + context-comparison diagnostics on API error.
- * Written to a session-scoped file in the claude temp dir so /share can collect
+ * Written to a session-scoped file in the deepcli temp dir so /share can collect
  * it (replaces the old Desktop dump). Includes context numbers to help diagnose
  * projection divergence (classifier tokens >> main loop tokens).
  * Returns the dump path on success, null on failure.
@@ -450,9 +450,9 @@ export function buildTranscriptForClassifier(
  * stable cache prefix across classifier calls.
  *
  * Reads from bootstrap/state.ts cache (populated by context.ts) instead of
- * importing claudemd.ts directly — claudemd → permissions/filesystem →
+ * importing deepclimd.ts directly — deepclimd → permissions/filesystem →
  * permissions → yoloClassifier is a cycle. context.ts already gates on
- * CLAUDE_CODE_DISABLE_CLAUDE_MDS and normalizes '' to null before caching.
+ * DEEPCLI_DISABLE_CLAUDE_MDS and normalizes '' to null before caching.
  * If the cache is unpopulated (tests, or an entrypoint that never calls
  * getUserContext), the classifier proceeds without CLAUDE.md — same as
  * pre-PR behavior.
@@ -511,7 +511,7 @@ export async function buildYoloSystemPrompt(
   // All three sections use the same <foo_to_replace>...</foo_to_replace>
   // delimiter pattern. The external template wraps its defaults inside the
   // tags, so user-provided values REPLACE the defaults entirely. The
-  // anthropic template keeps its defaults outside the tags and uses an empty
+  // nexusai template keeps its defaults outside the tags and uses an empty
   // tag pair at the end of each section, so user-provided values are
   // strictly ADDITIVE.
   const userAllow = allowDescriptions.length
@@ -713,7 +713,7 @@ async function classifyYoloActionXml(
   systemPrompt: string,
   userPrompt: string,
   userContentBlocks: Array<
-    Anthropic.TextBlockParam | Anthropic.ImageBlockParam
+    NexusAI.TextBlockParam | NexusAI.ImageBlockParam
   >,
   model: string,
   promptLengths: {
@@ -739,7 +739,7 @@ async function classifyYoloActionXml(
         ? 'xml_fast'
         : 'xml_thinking'
   const xmlSystemPrompt = replaceOutputFormatWithXml(systemPrompt)
-  const systemBlocks: Anthropic.TextBlockParam[] = [
+  const systemBlocks: NexusAI.TextBlockParam[] = [
     {
       type: 'text' as const,
       text: xmlSystemPrompt,
@@ -758,7 +758,7 @@ async function classifyYoloActionXml(
   // Wrap all content (transcript + action) in <transcript> tags.
   // The action is the final tool_use block in the transcript.
   const wrappedContent: Array<
-    Anthropic.TextBlockParam | Anthropic.ImageBlockParam
+    NexusAI.TextBlockParam | NexusAI.ImageBlockParam
   > = [
     { type: 'text' as const, text: '<transcript>\n' },
     ...userContentBlocks,
@@ -1037,7 +1037,7 @@ export async function classifyYoloAction(
 
   let toolCallsLength = actionCompact.length
   let userPromptsLength = 0
-  const userContentBlocks: Anthropic.TextBlockParam[] = []
+  const userContentBlocks: NexusAI.TextBlockParam[] = []
   for (const entry of transcriptEntries) {
     for (const block of entry.content) {
       const serialized = toCompactBlock(block, entry.role, lookup)
@@ -1333,7 +1333,7 @@ type AutoModeConfig = {
  */
 function getClassifierModel(): string {
   if (process.env.USER_TYPE === 'ant') {
-    const envModel = process.env.CLAUDE_CODE_AUTO_MODE_MODEL
+    const envModel = process.env.DEEPCLI_AUTO_MODE_MODEL
     if (envModel) return envModel
   }
   const config = getFeatureValue_CACHED_MAY_BE_STALE(
@@ -1356,7 +1356,7 @@ function resolveTwoStageClassifier():
   | 'thinking'
   | undefined {
   if (process.env.USER_TYPE === 'ant') {
-    const env = process.env.CLAUDE_CODE_TWO_STAGE_CLASSIFIER
+    const env = process.env.DEEPCLI_TWO_STAGE_CLASSIFIER
     if (env === 'fast' || env === 'thinking') return env
     if (isEnvTruthy(env)) return true
     if (isEnvDefinedFalsy(env)) return false
@@ -1378,7 +1378,7 @@ function isTwoStageClassifierEnabled(): boolean {
 
 function isJsonlTranscriptEnabled(): boolean {
   if (process.env.USER_TYPE === 'ant') {
-    const env = process.env.CLAUDE_CODE_JSONL_TRANSCRIPT
+    const env = process.env.DEEPCLI_JSONL_TRANSCRIPT
     if (isEnvTruthy(env)) return true
     if (isEnvDefinedFalsy(env)) return false
   }

@@ -150,8 +150,8 @@ export function Doctor(t0) {
       default: TASK_MAX_OUTPUT_DEFAULT,
       upperLimit: TASK_MAX_OUTPUT_UPPER_LIMIT
     }, {
-      name: "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
-      ...getModelMaxOutputTokens("claude-opus-4-6")
+      name: "DEEPCLI_MAX_OUTPUT_TOKENS",
+      ...getModelMaxOutputTokens("deepcli-opus-4-6")
     }];
     t4 = envVars.map(_temp8).filter(_temp9);
     $[5] = t4;
@@ -166,7 +166,7 @@ export function Doctor(t0) {
       getDoctorDiagnostic().then(setDiagnostic);
       (async () => {
         const userAgentsDir = join(getClaudeConfigHomeDir(), "agents");
-        const projectAgentsDir = join(getOriginalCwd(), ".claude", "agents");
+        const projectAgentsDir = join(getOriginalCwd(), ".deepcli", "agents");
         const {
           activeAgents,
           allAgents,
@@ -189,7 +189,7 @@ export function Doctor(t0) {
         }, async () => toolPermissionContext);
         setContextWarnings(warnings);
         if (isPidBasedLockingEnabled()) {
-          const locksDir = join(getXDGStateHome(), "claude", "locks");
+          const locksDir = join(getXDGStateHome(), "deepcli", "locks");
           const staleLocksCleaned = cleanupStaleLocks(locksDir);
           const locks = getAllLockInfo(locksDir);
           setVersionLockInfo({
@@ -222,7 +222,7 @@ export function Doctor(t0) {
   let t7;
   if ($[11] !== onDone) {
     t7 = () => {
-      onDone("Claude Code diagnostics dismissed", {
+      onDone("DeepCLI diagnostics dismissed", {
         display: "system"
       });
     };

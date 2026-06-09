@@ -5,7 +5,7 @@ import { isEnvTruthy } from './envUtils.js'
 import { getInitialSettings } from './settings/settings.js'
 
 // The SDK does not yet have types for advisor blocks.
-// TODO(hackyon): Migrate to the real anthropic SDK types when this feature ships publicly
+// TODO(hackyon): Migrate to the real nexusai SDK types when this feature ships publicly
 export type AdvisorServerToolUseBlock = {
   type: 'server_tool_use'
   id: string
@@ -58,7 +58,7 @@ function getAdvisorConfig(): AdvisorConfig {
 }
 
 export function isAdvisorEnabled(): boolean {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_ADVISOR_TOOL)) {
+  if (isEnvTruthy(process.env.DEEPCLI_DISABLE_ADVISOR_TOOL)) {
     return false
   }
   // The advisor beta header is first-party only (Bedrock/Vertex 400 on it).

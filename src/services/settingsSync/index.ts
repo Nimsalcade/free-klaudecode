@@ -1,12 +1,12 @@
 /**
  * Settings Sync Service
  *
- * Syncs user settings and memory files across Claude Code environments.
+ * Syncs user settings and memory files across DeepCLI environments.
  *
  * - Interactive CLI: Uploads local settings to remote (incremental, only changed entries)
  * - CCR: Downloads remote settings to local before plugin installation
  *
- * Backend API: anthropic/anthropic#218817
+ * Backend API: nexusai/nexusai#218817
  */
 
 import { feature } from 'bun:bundle'
@@ -16,7 +16,7 @@ import pickBy from 'lodash-es/pickBy.js'
 import { dirname } from 'path'
 import { getIsInteractive } from '../../bootstrap/state.js'
 import {
-  CLAUDE_AI_INFERENCE_SCOPE,
+  DEEPCLI_AI_INFERENCE_SCOPE,
   getOauthConfig,
   OAUTH_BETA_HEADER,
 } from '../../constants/oauth.js'
@@ -24,7 +24,7 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
 } from '../../utils/auth.js'
-import { clearMemoryFileCaches } from '../../utils/claudemd.js'
+import { clearMemoryFileCaches } from '../../utils/deepclimd.js'
 import { getMemoryPath } from '../../utils/config.js'
 import { logForDiagnosticsNoPII } from '../../utils/diagLogs.js'
 import { classifyAxiosError } from '../../utils/errors.js'
@@ -216,12 +216,12 @@ function isUsingOAuth(): boolean {
 
   const tokens = getClaudeAIOAuthTokens()
   return Boolean(
-    tokens?.accessToken && tokens.scopes?.includes(CLAUDE_AI_INFERENCE_SCOPE),
+    tokens?.accessToken && tokens.scopes?.includes(DEEPCLI_AI_INFERENCE_SCOPE),
   )
 }
 
 function getSettingsSyncEndpoint(): string {
-  return `${getOauthConfig().BASE_API_URL}/api/claude_code/user_settings`
+  return `${getOauthConfig().BASE_API_URL}/api/deepcli_code/user_settings`
 }
 
 function getSettingsSyncAuthHeaders(): {
@@ -233,7 +233,7 @@ function getSettingsSyncAuthHeaders(): {
     return {
       headers: {
         Authorization: `Bearer ${oauthTokens.accessToken}`,
-        'anthropic-beta': OAUTH_BETA_HEADER,
+        'nexusai-beta': OAUTH_BETA_HEADER,
       },
     }
   }

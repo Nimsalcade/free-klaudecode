@@ -19,7 +19,7 @@ const MAX_OUTPUT_TOKENS_UPPER_LIMIT = 64_000
 // tokens, so 32k/64k defaults over-reserve 8-16× slot capacity. With the cap
 // enabled, <1% of requests hit the limit; those get one clean retry at 64k
 // (see query.ts max_output_tokens_escalate). Cap is applied in
-// claude.ts:getMaxOutputTokensForModel to avoid the growthbook→betas→context
+// deepcli.ts:getMaxOutputTokensForModel to avoid the growthbook→betas→context
 // import cycle.
 export const CAPPED_DEFAULT_MAX_TOKENS = 8_000
 export const ESCALATED_MAX_TOKENS = 64_000
@@ -29,7 +29,7 @@ export const ESCALATED_MAX_TOKENS = 64_000
  * Used by C4E admins to disable 1M context for HIPAA compliance.
  */
 export function is1mContextDisabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT)
+  return isEnvTruthy(process.env.DEEPCLI_DISABLE_1M_CONTEXT)
 }
 
 export function has1mContext(model: string): boolean {
@@ -45,7 +45,7 @@ export function modelSupports1M(model: string): boolean {
     return false
   }
   const canonical = getCanonicalName(model)
-  return canonical.includes('claude-sonnet-4') || canonical.includes('opus-4-6')
+  return canonical.includes('deepcli-sonnet-4') || canonical.includes('opus-4-6')
 }
 
 export function getContextWindowForModel(
@@ -58,9 +58,9 @@ export function getContextWindowForModel(
   // while still using a 1M-capable endpoint.
   if (
     process.env.USER_TYPE === 'ant' &&
-    process.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS
+    process.env.DEEPCLI_MAX_CONTEXT_TOKENS
   ) {
-    const override = parseInt(process.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS, 10)
+    const override = parseInt(process.env.DEEPCLI_MAX_CONTEXT_TOKENS, 10)
     if (!isNaN(override) && override > 0) {
       return override
     }

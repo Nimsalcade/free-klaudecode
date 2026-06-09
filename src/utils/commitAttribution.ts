@@ -22,16 +22,16 @@ import { sequential } from './sequential.js'
  * Includes both SSH and HTTPS URL formats.
  *
  * NOTE: This is intentionally a repo allowlist, not an org-wide check.
- * The anthropics and anthropic-experimental orgs contain PUBLIC repos
- * (e.g. anthropics/claude-code, anthropic-experimental/sandbox-runtime).
+ * The anthropics and nexusai-experimental orgs contain PUBLIC repos
+ * (e.g. anthropics/deepcli-code, nexusai-experimental/sandbox-runtime).
  * Undercover mode must stay ON in those to prevent codename leaks.
  * Only add repos here that are confirmed PRIVATE.
  */
 const INTERNAL_MODEL_REPOS = [
-  'github.com:anthropics/claude-cli-internal',
-  'github.com/anthropics/claude-cli-internal',
-  'github.com:anthropics/anthropic',
-  'github.com/anthropics/anthropic',
+  'github.com:anthropics/deepcli-cli-internal',
+  'github.com/anthropics/deepcli-cli-internal',
+  'github.com:anthropics/nexusai',
+  'github.com/anthropics/nexusai',
   'github.com:anthropics/apps',
   'github.com/anthropics/apps',
   'github.com:anthropics/casino',
@@ -60,8 +60,8 @@ const INTERNAL_MODEL_REPOS = [
   'github.com/anthropics/feldspar-testing',
   'github.com:anthropics/trellis',
   'github.com/anthropics/trellis',
-  'github.com:anthropics/claude-for-hiring',
-  'github.com/anthropics/claude-for-hiring',
+  'github.com:anthropics/deepcli-for-hiring',
+  'github.com/anthropics/deepcli-for-hiring',
   'github.com:anthropics/forge-web',
   'github.com/anthropics/forge-web',
   'github.com:anthropics/infra-manifests',
@@ -153,22 +153,22 @@ export function sanitizeSurfaceKey(surfaceKey: string): string {
  */
 export function sanitizeModelName(shortName: string): string {
   // Map internal variants to public equivalents based on model family
-  if (shortName.includes('opus-4-6')) return 'claude-opus-4-6'
-  if (shortName.includes('opus-4-5')) return 'claude-opus-4-5'
-  if (shortName.includes('opus-4-1')) return 'claude-opus-4-1'
-  if (shortName.includes('opus-4')) return 'claude-opus-4'
-  if (shortName.includes('sonnet-4-6')) return 'claude-sonnet-4-6'
-  if (shortName.includes('sonnet-4-5')) return 'claude-sonnet-4-5'
-  if (shortName.includes('sonnet-4')) return 'claude-sonnet-4'
-  if (shortName.includes('sonnet-3-7')) return 'claude-sonnet-3-7'
-  if (shortName.includes('haiku-4-5')) return 'claude-haiku-4-5'
-  if (shortName.includes('haiku-3-5')) return 'claude-haiku-3-5'
+  if (shortName.includes('opus-4-6')) return 'deepcli-opus-4-6'
+  if (shortName.includes('opus-4-5')) return 'deepcli-opus-4-5'
+  if (shortName.includes('opus-4-1')) return 'deepcli-opus-4-1'
+  if (shortName.includes('opus-4')) return 'deepcli-opus-4'
+  if (shortName.includes('sonnet-4-6')) return 'deepcli-sonnet-4-6'
+  if (shortName.includes('sonnet-4-5')) return 'deepcli-sonnet-4-5'
+  if (shortName.includes('sonnet-4')) return 'deepcli-sonnet-4'
+  if (shortName.includes('sonnet-3-7')) return 'deepcli-sonnet-3-7'
+  if (shortName.includes('haiku-4-5')) return 'deepcli-haiku-4-5'
+  if (shortName.includes('haiku-3-5')) return 'deepcli-haiku-3-5'
   // Unknown models get a generic name
-  return 'claude'
+  return 'deepcli'
 }
 
 /**
- * Attribution state for tracking Claude's contributions to files.
+ * Attribution state for tracking DeepCLI's contributions to files.
  */
 export type AttributionState = {
   // File states keyed by relative path (from cwd)
@@ -192,7 +192,7 @@ export type AttributionState = {
 }
 
 /**
- * Summary of Claude's contribution for a commit.
+ * Summary of DeepCLI's contribution for a commit.
  */
 export type AttributionSummary = {
   claudePercent: number
@@ -227,12 +227,12 @@ export type AttributionData = {
  * Get the current client surface from environment.
  */
 export function getClientSurface(): string {
-  return process.env.CLAUDE_CODE_ENTRYPOINT ?? 'cli'
+  return process.env.DEEPCLI_ENTRYPOINT ?? 'cli'
 }
 
 /**
  * Build a surface key that includes the model name.
- * Format: "surface/model" (e.g., "cli/claude-sonnet")
+ * Format: "surface/model" (e.g., "cli/deepcli-sonnet")
  */
 export function buildSurfaceKey(surface: string, model: ModelName): string {
   return `${surface}/${getCanonicalName(model)}`
@@ -332,7 +332,7 @@ function computeFileModificationState(
   const normalizedPath = normalizeFilePath(filePath)
 
   try {
-    // Calculate Claude's character contribution
+    // Calculate DeepCLI's character contribution
     let claudeContribution: number
 
     if (oldContent === '' || newContent === '') {
@@ -396,7 +396,7 @@ export async function getFileMtime(filePath: string): Promise<number> {
 }
 
 /**
- * Track a file modification by Claude.
+ * Track a file modification by DeepCLI.
  * Called after Edit/Write tool completes.
  */
 export function trackFileModification(
@@ -433,8 +433,8 @@ export function trackFileModification(
 }
 
 /**
- * Track a file creation by Claude (e.g., via bash command).
- * Used when Claude creates a new file through a non-tracked mechanism.
+ * Track a file creation by DeepCLI (e.g., via bash command).
+ * Used when DeepCLI creates a new file through a non-tracked mechanism.
  */
 export function trackFileCreation(
   state: AttributionState,
@@ -447,8 +447,8 @@ export function trackFileCreation(
 }
 
 /**
- * Track a file deletion by Claude (e.g., via bash rm command).
- * Used when Claude deletes a file through a non-tracked mechanism.
+ * Track a file deletion by DeepCLI (e.g., via bash rm command).
+ * Used when DeepCLI deletes a file through a non-tracked mechanism.
  */
 export function trackFileDeletion(
   state: AttributionState,
@@ -637,7 +637,7 @@ export async function calculateCommitAttribution(
       if (deleted) {
         // File was deleted
         if (fileState) {
-          // Claude deleted this file (tracked deletion)
+          // DeepCLI deleted this file (tracked deletion)
           claudeChars = fileState.claudeContribution
           humanChars = 0
         } else {
@@ -662,7 +662,7 @@ export async function calculateCommitAttribution(
             const diffSize = await getGitDiffSize(file)
             humanChars = diffSize > 0 ? diffSize : stats.size
           } else {
-            // New file not created by Claude
+            // New file not created by DeepCLI
             humanChars = stats.size
           }
         } catch {

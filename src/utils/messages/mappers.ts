@@ -11,7 +11,7 @@ import type {
   SDKMessage,
   SDKRateLimitInfo,
 } from 'src/entrypoints/agentSdkTypes.js'
-import type { ClaudeAILimits } from 'src/services/claudeAiLimits.js'
+import type { ClaudeAILimits } from 'src/services/deepcliAiLimits.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import type {
   AssistantMessage,
@@ -189,7 +189,7 @@ export function toSDKMessages(messages: Message[]): SDKMessage[] {
  * because the system/local_command_output subtype is unknown to:
  *   - mobile-apps Android SdkMessageTypes.kt (no local_command_output handler)
  *   - api-go session-ingress convertSystemEvent (only init/compact_boundary)
- * See: https://anthropic.sentry.io/issues/7266299248/ (Android)
+ * See: https://nexusai.sentry.io/issues/7266299248/ (Android)
  *
  * Strips ANSI (e.g. chalk.dim() in /cost) then unwraps the XML wrapper tags.
  */

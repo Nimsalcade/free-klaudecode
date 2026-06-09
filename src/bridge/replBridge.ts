@@ -306,7 +306,7 @@ export async function initBridgeCore(
   // state. The pointer is written unconditionally after session create
   // (crash-recovery for all sessions); perpetual mode just skips the
   // teardown clear so it survives clean exits too. Only reuse 'repl'
-  // pointers — a crashed standalone bridge (`claude remote-control`)
+  // pointers — a crashed standalone bridge (`deepcli remote-control`)
   // writes source:'standalone' with a different workerType.
   const rawPrior = perpetual ? await readBridgePointer(dir) : null
   const prior = rawPrior?.source === 'repl' ? rawPrior : null
@@ -479,7 +479,7 @@ export async function initBridgeCore(
   // Crash-recovery pointer: written now so a kill -9 at any point after
   // this leaves a recoverable trail. Cleared in teardown (non-perpetual)
   // or left alone (perpetual mode — pointer survives clean exit too).
-  // `claude remote-control --continue` from the same directory will detect
+  // `deepcli remote-control --continue` from the same directory will detect
   // it and offer to resume.
   await writeBridgePointer(dir, {
     sessionId: currentSessionId,
@@ -538,7 +538,7 @@ export async function initBridgeCore(
   // Adapter over either HybridTransport (v1: WS reads + POST writes to
   // Session-Ingress) or SSETransport+CCRClient (v2: SSE reads + POST
   // writes to CCR /worker/*). The v1/v2 choice is made in onWorkReceived:
-  // server-driven via secret.use_code_sessions, with CLAUDE_BRIDGE_USE_CCR_V2
+  // server-driven via secret.use_code_sessions, with DEEPCLI_BRIDGE_USE_CCR_V2
   // as an ant-dev override.
   let transport: ReplBridgeTransport | null = null
   // Bumped on every onWorkReceived. Captured in createV2ReplTransport's .then()
@@ -1132,12 +1132,12 @@ export async function initBridgeCore(
       // override for forcing v2 before the server flag is on for your user —
       // requires ccr_v2_compat_enabled server-side or registerWorker 404s.
       //
-      // Kept separate from CLAUDE_CODE_USE_CCR_V2 (the child-SDK transport
+      // Kept separate from DEEPCLI_USE_CCR_V2 (the child-SDK transport
       // selector set by sessionRunner/environment-manager) to avoid the
       // inheritance hazard in spawn mode where the parent's orchestrator
       // var would leak into a v1 child.
       const useCcrV2 =
-        serverUseCcrV2 || isEnvTruthy(process.env.CLAUDE_BRIDGE_USE_CCR_V2)
+        serverUseCcrV2 || isEnvTruthy(process.env.DEEPCLI_BRIDGE_USE_CCR_V2)
 
       // Auth is the one place v1 and v2 diverge hard:
       //
@@ -1464,12 +1464,12 @@ export async function initBridgeCore(
               new URL(wsUrl),
               {
                 Authorization: `Bearer ${oauthToken}`,
-                'anthropic-version': '2023-06-01',
+                'nexusai-version': '2023-06-01',
               },
               workSessionId,
               () => ({
                 Authorization: `Bearer ${getOAuthToken() ?? oauthToken}`,
-                'anthropic-version': '2023-06-01',
+                'nexusai-version': '2023-06-01',
               }),
               // Cap retries so a persistently-failing session-ingress can't
               // pin the uploader drain loop for the lifetime of the bridge.
@@ -2195,7 +2195,7 @@ async function startWorkPollLoop({
       // BridgeFatalError by handleErrorStatus() — never an axios-shaped
       // error. The poll endpoint's only path param is the env ID; 404
       // unambiguously means env-gone (no-work is a 200 with null body).
-      // The server sends error.type='not_found_error' (standard Anthropic
+      // The server sends error.type='not_found_error' (standard NexusAI
       // API shape), not a bridge-specific string — but status===404 is
       // the real signal and survives body-shape changes.
       if (

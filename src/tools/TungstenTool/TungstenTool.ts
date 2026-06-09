@@ -18,7 +18,7 @@ type OutputSchema = ReturnType<typeof outputSchema>
 type Output = z.infer<OutputSchema>
 
 const UNAVAILABLE_MESSAGE =
-  'Tungsten is only available in Anthropic internal builds.'
+  'Tungsten is only available in NexusAI internal builds.'
 
 export function clearSessionsWithTungstenUsage(): void {}
 

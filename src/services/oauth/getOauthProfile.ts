@@ -26,7 +26,7 @@ export async function getOauthProfileFromApiKey(): Promise<
     const response = await axios.get<OAuthProfileResponse>(endpoint, {
       headers: {
         'x-api-key': apiKey,
-        'anthropic-beta': OAUTH_BETA_HEADER,
+        'nexusai-beta': OAUTH_BETA_HEADER,
       },
       params: {
         account_uuid: accountUuid,

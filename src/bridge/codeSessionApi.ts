@@ -19,7 +19,7 @@ function oauthHeaders(accessToken: string): Record<string, string> {
   return {
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
-    'anthropic-version': ANTHROPIC_VERSION,
+    'nexusai-version': ANTHROPIC_VERSION,
   }
 }
 
