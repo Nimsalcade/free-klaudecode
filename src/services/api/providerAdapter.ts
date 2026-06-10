@@ -20,7 +20,6 @@
  *   vertex       yes         yes       no            GCP ADC, native SDK
  *   foundry      yes         yes       no            Foundry key, native SDK
  *   openai       yes         no        yes           Codex OAuth, /responses shim
- *   deepseek     yes         yes       yes           DEEPSEEK_API_KEY, /chat/completions shim
  *   local        yes         yes       no*           OpenAI /chat/completions shim
  *
  *   (*) local brings no real credentials but is grouped with ownCreds since it
@@ -32,7 +31,6 @@ import type { APIProvider } from '../../utils/model/providers.js'
 import { getAPIProvider } from '../../utils/model/providers.js'
 import { createCodexFetch } from './codex-fetch-adapter.js'
 import { createLocalFetch } from './local-fetch-adapter.js'
-import { getDeepSeekProviderConfig } from './openai-compat-config.js'
 
 export type ProviderFetch = (
   input: RequestInfo | URL,
@@ -98,15 +96,6 @@ const ADAPTERS: Record<APIProvider, ProviderAdapter> = {
       const tokens = getCodexOAuthTokens()
       return tokens?.accessToken ? createCodexFetch(tokens.accessToken) : null
     },
-  },
-  deepseek: {
-    id: 'deepseek',
-    label: 'DeepSeek',
-    isThirdParty: true,
-    bringsOwnCredentials: true,
-    // Always returns a fetch: a missing DEEPSEEK_API_KEY surfaces as a clear
-    // 401 with setup instructions instead of falling back to Anthropic auth.
-    createFetch: () => createLocalFetch(getDeepSeekProviderConfig()),
   },
   local: {
     id: 'local',

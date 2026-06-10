@@ -13,8 +13,8 @@ import {
   isMaxSubscriber,
   isProSubscriber,
   isTeamPremiumSubscriber,
+  isCodexSubscriber,
 } from '../auth.js'
-import { getOpenAICompatDefaultModelSetting } from '../../services/api/openai-compat-config.js'
 import { getAntModelOverrideConfig, resolveAntModel } from './antModels.js'
 import {
   has1mContext,
@@ -179,14 +179,6 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
-  // Adapter-backed OpenAI-compatible providers (DeepSeek, local) serve a
-  // user-configured model; surface that identity instead of a Claude default
-  // the fetch adapter would silently override anyway.
-  const compatModel = getOpenAICompatDefaultModelSetting()
-  if (compatModel) {
-    return compatModel
-  }
-
   if (isCodexSubscriber()) {
     return getModelStrings().gpt53codex
   }
@@ -311,10 +303,6 @@ export function getCanonicalName(fullModelName: ModelName): ModelShortName {
 export function getClaudeAiUserDefaultModelDescription(
   fastMode = false,
 ): string {
-  const compatModel = getOpenAICompatDefaultModelSetting()
-  if (compatModel) {
-    return `${renderModelName(compatModel)} · OpenAI-compatible provider`
-  }
   if (isCodexSubscriber()) {
     return 'GPT-5.3 Codex · Optimized for code generation and understanding'
   }
@@ -379,13 +367,6 @@ export function renderModelSetting(setting: ModelName | ModelAlias): string {
  * if the model is not recognized as a public model.
  */
 export function getPublicModelDisplayName(model: ModelName): string | null {
-  if (model.startsWith('deepseek')) {
-    // The stable aliases always track DeepSeek's latest generation.
-    if (model === 'deepseek-chat') return 'DeepSeek Chat'
-    if (model === 'deepseek-reasoner') return 'DeepSeek Reasoner'
-    return model
-  }
-
   if (model.includes('gpt-') || model.includes('codex')) {
     if (model === 'gpt-5.2-codex') return 'Codex 5.2'
     if (model === 'gpt-5.1-codex') return 'Codex 5.1'
@@ -480,12 +461,7 @@ export function renderModelName(model: ModelName): string {
 export function getPublicModelName(model: ModelName): string {
   const publicName = getPublicModelDisplayName(model)
   if (publicName) {
-    // Non-Claude models must not be attributed to Claude.
-    if (
-      model.includes('gpt-') ||
-      model.includes('codex') ||
-      model.startsWith('deepseek')
-    ) {
+    if (model.includes('gpt-') || model.includes('codex')) {
       return publicName
     }
     return `Claude ${publicName}`
