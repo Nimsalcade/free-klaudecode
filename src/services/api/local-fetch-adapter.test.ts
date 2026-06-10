@@ -311,9 +311,14 @@ describe('createLocalFetch — non-streaming', () => {
 
 describe('createLocalFetch — errors', () => {
   test('returns a structured error when the server is unreachable', async () => {
+    // A closed loopback port refuses instantly (kernel RST) — unlike
+    // TEST-NET-1 addresses, which some CI networks silently drop, leaving
+    // fetch hanging in SYN retries until the test times out.
+    const closedPortServer = Bun.serve({ port: 0, fetch: () => new Response('') })
+    const closedPort = closedPortServer.port
+    closedPortServer.stop(true)
     const localFetch = createLocalFetch({
-      // Reserved TEST-NET-1 address; connection refused/unreachable.
-      baseURL: 'http://192.0.2.1:9/v1',
+      baseURL: `http://127.0.0.1:${closedPort}/v1`,
       apiKey: 'not-needed',
       model: 'm',
     })
