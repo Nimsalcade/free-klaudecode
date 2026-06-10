@@ -77,7 +77,7 @@ Claude Code ships with 88 feature flags gated behind `bun:bundle` compile-time s
 
 ## Model Providers
 
-free-code supports **five API providers** out of the box. Set the corresponding environment variable to switch providers -- no code changes needed.
+free-code supports **seven API providers** out of the box. Set the corresponding environment variable to switch providers -- no code changes needed.
 
 ### Anthropic (Direct API) -- Default
 
@@ -147,6 +147,48 @@ free-code
 
 Supports custom deployment IDs as model names.
 
+### DeepSeek
+
+First-class support for DeepSeek's hosted API. The `deepseek-chat` and
+`deepseek-reasoner` model aliases are stable and always track DeepSeek's
+latest model generation (agentic non-thinking mode and thinking mode
+respectively), so the defaults stay current without code changes.
+
+```bash
+export CLAUDE_CODE_USE_DEEPSEEK=1
+export DEEPSEEK_API_KEY="sk-..."
+free-code
+
+# Thinking mode
+export DEEPSEEK_MODEL="deepseek-reasoner"
+free-code
+```
+
+The DeepSeek provider rides the same OpenAI-compatible adapter as the local
+provider, with DeepSeek-specific behavior layered on:
+
+- **Reasoning support** -- `reasoning_content` from `deepseek-reasoner` is
+  translated into Anthropic thinking blocks, so the standard thinking UI and
+  spinners work.
+- **Cache-aware accounting** -- DeepSeek's prompt cache hit/miss tokens map to
+  Anthropic cache-read accounting, and `/cost` uses real DeepSeek pricing.
+- **`max_tokens` clamping** -- requests are clamped to DeepSeek's per-model
+  output ceilings (8K chat / 64K reasoner) instead of erroring on the
+  harness's 32K default.
+- **128K context window** -- auto-compact triggers at DeepSeek's real context
+  window rather than the 200K Claude default.
+- **Runtime model switching** -- `/model deepseek-reasoner` switches between
+  DeepSeek models mid-session without touching the environment.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `CLAUDE_CODE_USE_DEEPSEEK` | Enable the DeepSeek provider | -- |
+| `DEEPSEEK_API_KEY` | API key (required) | -- |
+| `DEEPSEEK_MODEL` | Default model | `deepseek-chat` |
+| `DEEPSEEK_BASE_URL` | API base URL | `https://api.deepseek.com/v1` |
+| `DEEPSEEK_MAX_OUTPUT_TOKENS` | Override the per-model `max_tokens` ceiling | `8192` / `65536` |
+| `DEEPSEEK_CONTEXT_WINDOW` | Override the assumed context window | `128000` |
+
 ### Local & OpenAI-compatible models -- run anything, no API key
 
 Point free-code at **any OpenAI-compatible `/chat/completions` endpoint** and run
@@ -174,11 +216,16 @@ free-code
 | `CLAUDE_CODE_LOCAL_BASE_URL` | OpenAI-compatible base URL | `http://localhost:11434/v1` |
 | `CLAUDE_CODE_LOCAL_MODEL` | Model name to send to the server | request model |
 | `CLAUDE_CODE_LOCAL_API_KEY` | Optional bearer token | `not-needed` |
+| `CLAUDE_CODE_LOCAL_MAX_OUTPUT_TOKENS` | Clamp `max_tokens` to this ceiling | unclamped |
+| `CLAUDE_CODE_LOCAL_CONTEXT_WINDOW` | Declare the served model's context window (drives auto-compact) | `200000` |
 
 Under the hood, a fetch adapter (`src/services/api/local-fetch-adapter.ts`)
 translates between the Anthropic Messages API and the OpenAI Chat Completions API
 in both directions -- system prompts, tool definitions, tool-call round-trips,
-vision (base64 images), streaming, and token accounting all map across cleanly.
+reasoning output (`reasoning_content` -> Anthropic thinking blocks), vision
+(base64 images), streaming, and token accounting (including cached prompt
+tokens) all map across cleanly. Token-count requests are answered locally
+instead of being forwarded as paid generations.
 
 ### Provider Selection Summary
 
@@ -189,6 +236,7 @@ vision (base64 images), streaming, and token accounting all map across cleanly.
 | AWS Bedrock | `CLAUDE_CODE_USE_BEDROCK=1` | AWS credentials |
 | Google Vertex AI | `CLAUDE_CODE_USE_VERTEX=1` | `gcloud` ADC |
 | Anthropic Foundry | `CLAUDE_CODE_USE_FOUNDRY=1` | `ANTHROPIC_FOUNDRY_API_KEY` |
+| DeepSeek | `CLAUDE_CODE_USE_DEEPSEEK=1` | `DEEPSEEK_API_KEY` |
 | Local / OpenAI-compatible | `CLAUDE_CODE_USE_LOCAL=1` | none (or optional bearer token) |
 
 ---

@@ -86,6 +86,19 @@ export const COST_HAIKU_45 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
+// Pricing for DeepSeek's stable aliases (deepseek-chat / deepseek-reasoner):
+// $0.28 input (cache miss) / $0.028 input (cache hit) / $0.42 output per Mtok.
+// DeepSeek bills cache writes as normal input (no write premium), and the
+// adapter reports cache_creation_input_tokens=0, so the write rate matches
+// the input rate. https://api-docs.deepseek.com/quick_start/pricing
+export const COST_DEEPSEEK = {
+  inputTokens: 0.28,
+  outputTokens: 0.42,
+  promptCacheWriteTokens: 0.28,
+  promptCacheReadTokens: 0.028,
+  webSearchRequests: 0,
+} as const satisfies ModelCosts
+
 const DEFAULT_UNKNOWN_MODEL_COST = COST_TIER_5_25
 
 /**
@@ -123,6 +136,9 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
     COST_TIER_5_25,
   [firstPartyNameToCanonical(CLAUDE_OPUS_4_6_CONFIG.firstParty)]:
     COST_TIER_5_25,
+  // DeepSeek provider models (getCanonicalName passes these through unchanged)
+  'deepseek-chat': COST_DEEPSEEK,
+  'deepseek-reasoner': COST_DEEPSEEK,
 }
 
 /**

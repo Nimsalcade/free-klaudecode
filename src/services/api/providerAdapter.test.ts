@@ -13,6 +13,7 @@ const PROVIDER_ENV_VARS = [
   'CLAUDE_CODE_USE_VERTEX',
   'CLAUDE_CODE_USE_FOUNDRY',
   'CLAUDE_CODE_USE_OPENAI',
+  'CLAUDE_CODE_USE_DEEPSEEK',
   'CLAUDE_CODE_USE_LOCAL',
 ]
 
@@ -49,6 +50,20 @@ describe('provider selection', () => {
     expect(providerBringsOwnCredentials()).toBe(true)
   })
 
+  test('CLAUDE_CODE_USE_DEEPSEEK selects the DeepSeek adapter with a fetch shim', () => {
+    clearProviderEnv()
+    process.env.CLAUDE_CODE_USE_DEEPSEEK = '1'
+    const a = getProviderAdapter()
+    expect(a.id).toBe('deepseek')
+    expect(a.isThirdParty).toBe(true)
+    expect(a.bringsOwnCredentials).toBe(true)
+    // The fetch exists even without DEEPSEEK_API_KEY — a missing key surfaces
+    // as a structured 401 at request time, not as an Anthropic login prompt.
+    expect(typeof a.createFetch()).toBe('function')
+    expect(isThirdPartyProvider()).toBe(true)
+    expect(providerBringsOwnCredentials()).toBe(true)
+  })
+
   test('native-SDK providers expose no fetch adapter', () => {
     clearProviderEnv()
     process.env.CLAUDE_CODE_USE_BEDROCK = '1'
@@ -64,6 +79,13 @@ describe('provider selection', () => {
     process.env.CLAUDE_CODE_USE_LOCAL = '1'
     expect(getProviderAdapter().id).toBe('bedrock')
   })
+
+  test('provider precedence: deepseek wins over local', () => {
+    clearProviderEnv()
+    process.env.CLAUDE_CODE_USE_DEEPSEEK = '1'
+    process.env.CLAUDE_CODE_USE_LOCAL = '1'
+    expect(getProviderAdapter().id).toBe('deepseek')
+  })
 })
 
 describe('registry metadata', () => {
@@ -74,6 +96,7 @@ describe('registry metadata', () => {
       'vertex',
       'foundry',
       'openai',
+      'deepseek',
       'local',
     ] as const) {
       expect(getProviderAdapterById(id).label.length).toBeGreaterThan(0)
@@ -88,7 +111,14 @@ describe('registry metadata', () => {
   })
 
   test('only firstParty is not third-party', () => {
-    for (const id of ['bedrock', 'vertex', 'foundry', 'openai', 'local'] as const) {
+    for (const id of [
+      'bedrock',
+      'vertex',
+      'foundry',
+      'openai',
+      'deepseek',
+      'local',
+    ] as const) {
       expect(getProviderAdapterById(id).isThirdParty).toBe(true)
     }
     expect(getProviderAdapterById('firstParty').isThirdParty).toBe(false)
