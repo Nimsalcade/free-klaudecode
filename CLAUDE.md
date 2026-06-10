@@ -31,6 +31,7 @@ Run the built binary with `./cli` or `./cli-dev`. Set `ANTHROPIC_API_KEY` in the
 - **Entry point/UI loop**: src/entrypoints/cli.tsx bootstraps the CLI, with the main interactive UI in src/screens/REPL.tsx (Ink/React).
 - **Command/tool registries**: src/commands.ts registers slash commands; src/tools.ts registers tool implementations. Implementations live in src/commands/ and src/tools/.
 - **LLM query pipeline**: src/QueryEngine.ts coordinates message flow, tool use, and model invocation.
+- **Provider seam**: src/services/api/providerAdapter.ts is the single registry for per-provider behavior (Anthropic, Bedrock, Vertex, Foundry, Codex, DeepSeek, local). OpenAI-compatible transports route through src/services/api/local-fetch-adapter.ts, with dependency-light configuration in src/services/api/openai-compat-config.ts; provider selection predicates live in src/utils/model/providers.ts.
 - **Core subsystems**:
   - src/services/: API clients, OAuth/MCP integration, analytics stubs
   - src/state/: app state store

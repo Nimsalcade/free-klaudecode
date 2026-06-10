@@ -1,5 +1,5 @@
 /**
- * Local / OpenAI-compatible Fetch Adapter
+ * OpenAI-compatible Fetch Adapter (local servers + DeepSeek)
  *
  * Intercepts fetch calls from the Anthropic SDK and routes them to any
  * OpenAI-compatible `/chat/completions` endpoint, translating between the
@@ -10,7 +10,12 @@
  *   - llama.cpp / llama-server
  *   - vLLM
  *   - LM Studio       (http://localhost:1234/v1)
- *   - OpenRouter, Groq, DeepSeek, Together, ... (any OpenAI-compatible host)
+ *   - OpenRouter, Groq, Together, ... (any OpenAI-compatible host)
+ *
+ * It also powers the first-class DeepSeek provider (CLAUDE_CODE_USE_DEEPSEEK),
+ * which layers DeepSeek-specific defaults on the same transport: agentic
+ * default model, per-model max_tokens ceilings, reasoning_content -> thinking
+ * translation, and cache-hit token accounting.
  *
  * Unlike the Codex adapter (which targets OpenAI's experimental /responses
  * API), this targets the ubiquitous /chat/completions API that essentially
@@ -20,38 +25,73 @@
  *   - Text messages (user/assistant) and system prompts
  *   - Tool definitions (Anthropic input_schema -> OpenAI function parameters)
  *   - Tool use round-trips (tool_use <-> tool_calls, tool_result <-> role:tool)
+ *   - Reasoning models (reasoning_content / reasoning -> Anthropic thinking)
  *   - Vision (Anthropic base64 image -> OpenAI image_url data URI)
  *   - Both streaming (SSE) and non-streaming responses
+ *   - Token accounting incl. cached prompt tokens (DeepSeek and OpenAI styles)
+ *   - count_tokens requests (answered locally; never forwarded as generations)
  *
- * Configuration (env):
- *   CLAUDE_CODE_USE_LOCAL=1         enable this provider
- *   CLAUDE_CODE_LOCAL_BASE_URL=...  OpenAI-compatible base URL
- *                                   (default: http://localhost:11434/v1 for Ollama)
- *   CLAUDE_CODE_LOCAL_MODEL=...     model name to send (overrides the request model)
- *   CLAUDE_CODE_LOCAL_API_KEY=...   optional bearer token (most local servers ignore it)
+ * Configuration (env) — local provider:
+ *   CLAUDE_CODE_USE_LOCAL=1                 enable the local provider
+ *   CLAUDE_CODE_LOCAL_BASE_URL=...          OpenAI-compatible base URL
+ *                                           (default: http://localhost:11434/v1 for Ollama)
+ *   CLAUDE_CODE_LOCAL_MODEL=...             model name to send (overrides the request model)
+ *   CLAUDE_CODE_LOCAL_API_KEY=...           optional bearer token
+ *   CLAUDE_CODE_LOCAL_MAX_OUTPUT_TOKENS=... clamp max_tokens to this ceiling
+ *   CLAUDE_CODE_LOCAL_CONTEXT_WINDOW=...    declare the served model's context window
+ *
+ * Configuration (env) — DeepSeek provider:
+ *   CLAUDE_CODE_USE_DEEPSEEK=1              enable the DeepSeek provider
+ *   DEEPSEEK_API_KEY=...                    required bearer token
+ *   DEEPSEEK_MODEL=...                      default: deepseek-chat (deepseek-reasoner for thinking)
+ *   DEEPSEEK_BASE_URL=...                   default: https://api.deepseek.com/v1
+ *   DEEPSEEK_MAX_OUTPUT_TOKENS=...          override the per-model max_tokens ceiling
+ *   DEEPSEEK_CONTEXT_WINDOW=...             override the published 128K context window
  */
 
 import { logForDebugging } from '../../utils/debug.js'
+import {
+  getDeepSeekProviderConfig,
+  getLocalProviderConfig,
+  maxOutputTokensForModel,
+  type OpenAICompatProviderConfig,
+} from './openai-compat-config.js'
 
-// ── Configuration ───────────────────────────────────────────────────
-
-export interface LocalProviderConfig {
-  baseURL: string
-  apiKey: string
-  model: string | null
-}
+// Re-exported for existing call sites and tests; the config now lives in
+// openai-compat-config.ts so model/context modules can read it without
+// importing this transport module.
+export {
+  getDeepSeekProviderConfig,
+  getLocalProviderConfig,
+} from './openai-compat-config.js'
+export type LocalProviderConfig = OpenAICompatProviderConfig
 
 /**
- * Reads the local provider configuration from the environment.
- * Defaults to a local Ollama instance, which is the most common setup.
+ * Inputs to createLocalFetch. Only the transport essentials are required —
+ * the rest defaults to permissive 'local' behavior.
  */
-export function getLocalProviderConfig(): LocalProviderConfig {
-  const baseURL = (
-    process.env.CLAUDE_CODE_LOCAL_BASE_URL || 'http://localhost:11434/v1'
-  ).replace(/\/+$/, '')
-  const apiKey = process.env.CLAUDE_CODE_LOCAL_API_KEY || 'not-needed'
-  const model = process.env.CLAUDE_CODE_LOCAL_MODEL || null
-  return { baseURL, apiKey, model }
+export type LocalFetchConfigInput = Pick<
+  OpenAICompatProviderConfig,
+  'baseURL' | 'apiKey' | 'model'
+> &
+  Partial<OpenAICompatProviderConfig>
+
+function normalizeConfig(
+  input: LocalFetchConfigInput,
+): OpenAICompatProviderConfig {
+  return {
+    provider: input.provider ?? 'local',
+    label: input.label ?? 'Local model server',
+    baseURL: input.baseURL,
+    apiKey: input.apiKey,
+    model: input.model,
+    nativeModelPrefix: input.nativeModelPrefix ?? null,
+    maxOutputTokens: input.maxOutputTokens ?? null,
+    requiresApiKey: input.requiresApiKey ?? false,
+    setupHint:
+      input.setupHint ??
+      'Is it running? Set CLAUDE_CODE_LOCAL_BASE_URL to point at your server.',
+  }
 }
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -80,6 +120,16 @@ interface AnthropicTool {
 }
 
 type OpenAIMessage = Record<string, unknown>
+
+interface OpenAIUsage {
+  prompt_tokens?: number
+  completion_tokens?: number
+  /** DeepSeek-style prompt cache accounting. */
+  prompt_cache_hit_tokens?: number
+  prompt_cache_miss_tokens?: number
+  /** OpenAI-style prompt cache accounting. */
+  prompt_tokens_details?: { cached_tokens?: number }
+}
 
 // ── Tool translation: Anthropic -> OpenAI ───────────────────────────
 
@@ -185,6 +235,9 @@ function translateMessages(
         })
       }
     } else if (msg.role === 'assistant') {
+      // thinking/redacted_thinking blocks are intentionally dropped: reasoning
+      // output is not part of the conversation context for OpenAI-compatible
+      // APIs (DeepSeek explicitly documents that CoT must not be sent back).
       let text = ''
       const toolCalls: Array<Record<string, unknown>> = []
       for (const block of msg.content) {
@@ -216,7 +269,7 @@ function translateMessages(
 
 function translateToChatCompletionsBody(
   anthropicBody: Record<string, unknown>,
-  config: LocalProviderConfig,
+  config: OpenAICompatProviderConfig,
   stream: boolean,
 ): { body: Record<string, unknown>; model: string } {
   const anthropicMessages = (anthropicBody.messages || []) as AnthropicMessage[]
@@ -226,9 +279,19 @@ function translateToChatCompletionsBody(
     | undefined
   const anthropicTools = (anthropicBody.tools || []) as AnthropicTool[]
 
-  // The local server's model wins if configured; otherwise pass the requested
-  // model through (lets users target multiple local models by name).
-  const model = config.model || (anthropicBody.model as string) || 'local'
+  // Model resolution: requests for models native to this provider pass
+  // through (so /model can switch deepseek-chat <-> deepseek-reasoner at
+  // runtime); anything else — typically claude-* ids from the harness — is
+  // rewritten to the configured model.
+  const requestedModel =
+    typeof anthropicBody.model === 'string' ? anthropicBody.model : null
+  const isNativeRequest = Boolean(
+    config.nativeModelPrefix &&
+      requestedModel?.toLowerCase().startsWith(config.nativeModelPrefix),
+  )
+  const model = isNativeRequest
+    ? requestedModel!
+    : config.model || requestedModel || 'local'
 
   const body: Record<string, unknown> = {
     model,
@@ -237,7 +300,13 @@ function translateToChatCompletionsBody(
   }
 
   if (typeof anthropicBody.max_tokens === 'number') {
-    body.max_tokens = anthropicBody.max_tokens
+    // Clamp to the provider's ceiling: the harness defaults to 32K output
+    // tokens, which hosted APIs like DeepSeek reject outright.
+    const cap = maxOutputTokensForModel(config, model)
+    body.max_tokens =
+      cap !== null
+        ? Math.min(anthropicBody.max_tokens, cap)
+        : anthropicBody.max_tokens
   }
   if (typeof anthropicBody.temperature === 'number') {
     body.temperature = anthropicBody.temperature
@@ -269,10 +338,114 @@ function mapFinishReason(reason: string | null | undefined): string {
       return 'tool_use'
     case 'length':
       return 'max_tokens'
+    case 'content_filter':
+      return 'refusal'
     case 'stop':
     default:
       return 'end_turn'
   }
+}
+
+// ── Usage translation ───────────────────────────────────────────────
+
+/**
+ * Maps OpenAI-style usage to Anthropic semantics. Anthropic's input_tokens
+ * EXCLUDES cache reads, while OpenAI's prompt_tokens INCLUDES them, so cached
+ * tokens are split out. Handles both DeepSeek (prompt_cache_hit_tokens) and
+ * OpenAI (prompt_tokens_details.cached_tokens) cache accounting.
+ */
+function translateUsage(usage: OpenAIUsage | undefined): {
+  input_tokens: number
+  output_tokens: number
+  cache_read_input_tokens: number
+  cache_creation_input_tokens: number
+} {
+  const prompt = usage?.prompt_tokens ?? 0
+  const completion = usage?.completion_tokens ?? 0
+  const cacheRead =
+    usage?.prompt_cache_hit_tokens ??
+    usage?.prompt_tokens_details?.cached_tokens ??
+    0
+  return {
+    input_tokens: Math.max(0, prompt - cacheRead),
+    output_tokens: completion,
+    cache_read_input_tokens: cacheRead,
+    cache_creation_input_tokens: 0,
+  }
+}
+
+// ── count_tokens handling ───────────────────────────────────────────
+
+/**
+ * OpenAI-compatible servers expose no token-counting endpoint, and forwarding
+ * /v1/messages/count_tokens to /chat/completions would run a real (paid)
+ * generation per estimate. Answer locally with a chars/4 heuristic instead —
+ * coarse, but directionally right for context-size decisions, and the caller
+ * already treats API counts as best-effort.
+ */
+function estimateTokenCount(anthropicBody: Record<string, unknown>): number {
+  let chars = 0
+  for (const key of ['system', 'messages', 'tools'] as const) {
+    const value = anthropicBody[key]
+    if (value !== undefined) {
+      try {
+        chars += JSON.stringify(value).length
+      } catch {
+        // Unserializable payloads contribute nothing to the estimate.
+      }
+    }
+  }
+  return Math.max(1, Math.ceil(chars / 4))
+}
+
+// ── Error translation ───────────────────────────────────────────────
+
+/**
+ * Wraps an upstream failure in an Anthropic-shaped error body, preserving the
+ * status code (so the SDK's retry logic still applies to 429/5xx) and the
+ * Retry-After header (so its backoff honors the server's pacing).
+ */
+function translateErrorResponse(
+  status: number,
+  errorText: string,
+  label: string,
+  retryAfter?: string | null,
+): Response {
+  // Surface the upstream error message rather than a wall of raw JSON.
+  let detail = errorText.slice(0, 2_000)
+  try {
+    const parsed = JSON.parse(errorText) as {
+      error?: { message?: string }
+      message?: string
+    }
+    detail = parsed?.error?.message || parsed?.message || detail
+  } catch {
+    // Not JSON — keep the raw text.
+  }
+
+  const type =
+    status === 401
+      ? 'authentication_error'
+      : status === 403
+        ? 'permission_error'
+        : status === 429
+          ? 'rate_limit_error'
+          : status >= 500
+            ? 'api_error'
+            : 'invalid_request_error'
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  if (retryAfter) headers['retry-after'] = retryAfter
+
+  return new Response(
+    JSON.stringify({
+      type: 'error',
+      error: { type, message: `${label} error (${status}): ${detail}` },
+    }),
+    { status, headers },
+  )
 }
 
 // ── SSE helper ──────────────────────────────────────────────────────
@@ -289,9 +462,19 @@ function translateNonStreamingResponse(
 ): Response {
   const choice = (openaiJson.choices as Array<Record<string, unknown>>)?.[0]
   const message = (choice?.message || {}) as Record<string, unknown>
-  const usage = (openaiJson.usage || {}) as Record<string, number>
 
   const content: Array<Record<string, unknown>> = []
+  // Reasoning models (deepseek-reasoner, R1-style local models) return their
+  // chain of thought in reasoning_content; surface it as a thinking block.
+  const reasoning =
+    typeof message.reasoning_content === 'string'
+      ? message.reasoning_content
+      : typeof message.reasoning === 'string'
+        ? message.reasoning
+        : ''
+  if (reasoning.length > 0) {
+    content.push({ type: 'thinking', thinking: reasoning, signature: '' })
+  }
   if (typeof message.content === 'string' && message.content.length > 0) {
     content.push({ type: 'text', text: message.content })
   }
@@ -302,6 +485,9 @@ function translateNonStreamingResponse(
     try {
       input = JSON.parse((fn.arguments as string) || '{}')
     } catch {
+      logForDebugging(
+        `[LOCAL] dropping unparsable tool_call arguments for ${fn.name}`,
+      )
       input = {}
     }
     content.push({
@@ -321,10 +507,7 @@ function translateNonStreamingResponse(
     content,
     stop_reason: mapFinishReason(choice?.finish_reason as string),
     stop_sequence: null,
-    usage: {
-      input_tokens: usage.prompt_tokens || 0,
-      output_tokens: usage.completion_tokens || 0,
-    },
+    usage: translateUsage(openaiJson.usage as OpenAIUsage | undefined),
   }
 
   return new Response(JSON.stringify(anthropicResponse), {
@@ -367,14 +550,14 @@ async function translateStreamToAnthropic(
       // closed content blocks. We allocate indices lazily in first-seen order.
       let nextIndex = 0
       let textBlockIndex = -1 // -1 = not open
+      let thinkingBlockIndex = -1 // -1 = not open
       // openai tool_call index -> anthropic block state
       const toolBlocks = new Map<
         number,
         { index: number; closed: boolean }
       >()
       let finishReason: string | null = null
-      let inputTokens = 0
-      let outputTokens = 0
+      let usage = translateUsage(undefined)
 
       const closeTextBlock = () => {
         if (textBlockIndex >= 0) {
@@ -386,10 +569,27 @@ async function translateStreamToAnthropic(
         }
       }
 
+      const closeThinkingBlock = () => {
+        if (thinkingBlockIndex >= 0) {
+          // Anthropic thinking blocks end with a signature_delta; emit an
+          // empty one so strict consumers see a spec-shaped sequence.
+          send('content_block_delta', {
+            type: 'content_block_delta',
+            index: thinkingBlockIndex,
+            delta: { type: 'signature_delta', signature: '' },
+          })
+          send('content_block_stop', {
+            type: 'content_block_stop',
+            index: thinkingBlockIndex,
+          })
+          thinkingBlockIndex = -1
+        }
+      }
+
       try {
         const reader = openaiResponse.body?.getReader()
         if (!reader) {
-          throw new Error('No response body from local model server')
+          throw new Error('No response body from model server')
         }
         const decoder = new TextDecoder()
         let buffer = ''
@@ -415,10 +615,8 @@ async function translateStreamToAnthropic(
             }
 
             // Trailing usage chunk (choices may be empty).
-            const usage = chunk.usage as Record<string, number> | undefined
-            if (usage) {
-              inputTokens = usage.prompt_tokens || inputTokens
-              outputTokens = usage.completion_tokens || outputTokens
+            if (chunk.usage) {
+              usage = translateUsage(chunk.usage as OpenAIUsage)
             }
 
             const choice = (chunk.choices as Array<Record<string, unknown>>)?.[0]
@@ -428,8 +626,34 @@ async function translateStreamToAnthropic(
             }
             const delta = (choice.delta || {}) as Record<string, unknown>
 
+            // ── Reasoning delta (deepseek-reasoner, R1-style models) ──
+            const reasoningDelta =
+              typeof delta.reasoning_content === 'string'
+                ? delta.reasoning_content
+                : typeof delta.reasoning === 'string'
+                  ? delta.reasoning
+                  : ''
+            if (reasoningDelta.length > 0) {
+              if (thinkingBlockIndex < 0) {
+                closeTextBlock()
+                thinkingBlockIndex = nextIndex++
+                send('content_block_start', {
+                  type: 'content_block_start',
+                  index: thinkingBlockIndex,
+                  content_block: { type: 'thinking', thinking: '', signature: '' },
+                })
+              }
+              send('content_block_delta', {
+                type: 'content_block_delta',
+                index: thinkingBlockIndex,
+                delta: { type: 'thinking_delta', thinking: reasoningDelta },
+              })
+            }
+
             // ── Text delta ──────────────────────────────────────
             if (typeof delta.content === 'string' && delta.content.length > 0) {
+              // Reasoning always precedes the answer; close it out.
+              closeThinkingBlock()
               if (textBlockIndex < 0) {
                 textBlockIndex = nextIndex++
                 send('content_block_start', {
@@ -450,7 +674,8 @@ async function translateStreamToAnthropic(
               | Array<Record<string, unknown>>
               | undefined
             if (Array.isArray(toolCallDeltas)) {
-              // A text block and tool calls can't be open simultaneously.
+              // Thinking/text blocks and tool calls can't be open simultaneously.
+              closeThinkingBlock()
               closeTextBlock()
               for (const tcDelta of toolCallDeltas) {
                 const ti = (tcDelta.index as number) ?? 0
@@ -489,6 +714,7 @@ async function translateStreamToAnthropic(
         }
       } catch (err) {
         // Surface the failure as visible assistant text rather than a silent hang.
+        closeThinkingBlock()
         if (textBlockIndex < 0) {
           textBlockIndex = nextIndex++
           send('content_block_start', {
@@ -502,7 +728,7 @@ async function translateStreamToAnthropic(
           index: textBlockIndex,
           delta: {
             type: 'text_delta',
-            text: `\n[local model adapter error: ${
+            text: `\n[model adapter error: ${
               err instanceof Error ? err.message : String(err)
             }]`,
           },
@@ -510,6 +736,7 @@ async function translateStreamToAnthropic(
       }
 
       // Close any still-open blocks.
+      closeThinkingBlock()
       closeTextBlock()
       for (const state of toolBlocks.values()) {
         if (!state.closed) {
@@ -527,11 +754,21 @@ async function translateStreamToAnthropic(
           stop_reason: mapFinishReason(finishReason),
           stop_sequence: null,
         },
-        usage: { output_tokens: outputTokens },
+        usage: {
+          output_tokens: usage.output_tokens,
+          input_tokens: usage.input_tokens,
+          cache_read_input_tokens: usage.cache_read_input_tokens,
+          cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        },
       })
       send('message_stop', {
         type: 'message_stop',
-        usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+        usage: {
+          input_tokens: usage.input_tokens,
+          output_tokens: usage.output_tokens,
+          cache_read_input_tokens: usage.cache_read_input_tokens,
+          cache_creation_input_tokens: usage.cache_creation_input_tokens,
+        },
       })
       controller.close()
     },
@@ -557,8 +794,9 @@ async function translateStreamToAnthropic(
  * Pass the result as the `fetch` option of the Anthropic SDK client.
  */
 export function createLocalFetch(
-  config: LocalProviderConfig = getLocalProviderConfig(),
+  configInput: LocalFetchConfigInput = getLocalProviderConfig(),
 ): (input: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
+  const config = normalizeConfig(configInput)
   return async (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -583,6 +821,27 @@ export function createLocalFetch(
       anthropicBody = {}
     }
 
+    // Token-count requests are answered locally — see estimateTokenCount.
+    if (url.includes('/count_tokens')) {
+      return new Response(
+        JSON.stringify({ input_tokens: estimateTokenCount(anthropicBody) }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    if (config.requiresApiKey && !config.apiKey) {
+      return new Response(
+        JSON.stringify({
+          type: 'error',
+          error: {
+            type: 'authentication_error',
+            message: `${config.label}: no API key configured. ${config.setupHint}`,
+          },
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
     const stream = anthropicBody.stream !== false
     const { body, model } = translateToChatCompletionsBody(
       anthropicBody,
@@ -591,7 +850,7 @@ export function createLocalFetch(
     )
 
     logForDebugging(
-      `[LOCAL] ${config.baseURL}/chat/completions model=${model} stream=${stream}`,
+      `[${config.provider.toUpperCase()}] ${config.baseURL}/chat/completions model=${model} stream=${stream}`,
     )
 
     let openaiResponse: Response
@@ -603,7 +862,9 @@ export function createLocalFetch(
           headers: {
             'Content-Type': 'application/json',
             Accept: stream ? 'text/event-stream' : 'application/json',
-            Authorization: `Bearer ${config.apiKey}`,
+            ...(config.apiKey
+              ? { Authorization: `Bearer ${config.apiKey}` }
+              : {}),
           },
           body: JSON.stringify(body),
         },
@@ -616,7 +877,7 @@ export function createLocalFetch(
           type: 'error',
           error: {
             type: 'api_error',
-            message: `Local model server unreachable at ${config.baseURL} (${message}). Is it running? Set CLAUDE_CODE_LOCAL_BASE_URL to point at your server.`,
+            message: `${config.label} unreachable at ${config.baseURL} (${message}). ${config.setupHint}`,
           },
         }),
         { status: 502, headers: { 'Content-Type': 'application/json' } },
@@ -625,18 +886,11 @@ export function createLocalFetch(
 
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text().catch(() => '')
-      return new Response(
-        JSON.stringify({
-          type: 'error',
-          error: {
-            type: 'api_error',
-            message: `Local model server error (${openaiResponse.status}): ${errorText}`,
-          },
-        }),
-        {
-          status: openaiResponse.status,
-          headers: { 'Content-Type': 'application/json' },
-        },
+      return translateErrorResponse(
+        openaiResponse.status,
+        errorText,
+        config.label,
+        openaiResponse.headers.get('retry-after'),
       )
     }
 

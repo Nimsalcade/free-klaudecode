@@ -3,6 +3,7 @@ import { stringWidth } from '../ink/stringWidth.js'
 import type { LogOption } from '../types/logs.js'
 import { getSubscriptionName, isClaudeAISubscriber, isCodexSubscriber } from './auth.js'
 import { getCwd } from './cwd.js'
+import { getAPIProvider } from './model/providers.js'
 import { getDisplayPath } from './file.js'
 import {
   truncate,
@@ -260,7 +261,11 @@ export function getLogoDisplayData(): {
     ? getSubscriptionName()
     : isCodexSubscriber()
       ? 'Codex API Billing'
-      : 'API Usage Billing'
+      : getAPIProvider() === 'deepseek'
+        ? 'DeepSeek API Billing'
+        : getAPIProvider() === 'local'
+          ? 'Local Model'
+          : 'API Usage Billing'
   const agentName = getInitialSettings().agent
 
   return {
