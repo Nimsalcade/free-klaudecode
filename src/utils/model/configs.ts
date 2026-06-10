@@ -1,7 +1,16 @@
 import type { ModelName } from './model.js'
 import type { APIProvider } from './providers.js'
 
-export type ModelConfig = Record<APIProvider, ModelName>
+/**
+ * Per-provider model ID strings. `firstParty` is the canonical ID and the
+ * fallback for providers without an explicit mapping (see
+ * getBuiltinModelStrings). Adapter-backed providers (deepseek, local) rewrite
+ * the outbound model in their fetch shim, so for them the canonical ID only
+ * feeds display/cost/telemetry lookups and never reaches the wire.
+ */
+export type ModelConfig = { firstParty: ModelName } & Partial<
+  Record<APIProvider, ModelName>
+>
 
 // @[MODEL LAUNCH]: Add a new CLAUDE_*_CONFIG constant here. Double check the correct model strings
 // here since the pattern may change.
