@@ -25,11 +25,7 @@ const MODEL_KEYS = Object.keys(ALL_MODEL_CONFIGS) as ModelKey[]
 function getBuiltinModelStrings(provider: APIProvider): ModelStrings {
   const out = {} as ModelStrings
   for (const key of MODEL_KEYS) {
-    // Providers without an explicit mapping (deepseek, local) fall back to the
-    // canonical first-party ID: their fetch adapters rewrite the outbound
-    // model anyway, and the canonical ID keeps display/cost lookups coherent.
-    out[key] =
-      ALL_MODEL_CONFIGS[key][provider] ?? ALL_MODEL_CONFIGS[key].firstParty
+    out[key] = ALL_MODEL_CONFIGS[key][provider]
   }
   return out
 }

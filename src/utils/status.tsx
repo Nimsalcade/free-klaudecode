@@ -10,8 +10,6 @@ import { getAWSRegion, getDefaultVertexRegion, isEnvTruthy } from './envUtils.js
 import { getDisplayPath } from './file.js';
 import { formatNumber } from './format.js';
 import { getIdeClientName, type IDEExtensionInstallationStatus, isJetBrainsIde, toIDEDisplayName } from './ide.js';
-import { getActiveOpenAICompatConfig } from '../services/api/openai-compat-config.js';
-import { getProviderAdapterById } from '../services/api/providerAdapter.js';
 import { getClaudeAiUserDefaultModelDescription, modelDisplayString } from './model/model.js';
 import { getAPIProvider } from './model/providers.js';
 import { getMTLSConfig } from './mtls.js';
@@ -243,11 +241,14 @@ export function buildAPIProviderProperties(): Property[] {
   const apiProvider = getAPIProvider();
   const properties: Property[] = [];
   if (apiProvider !== 'firstParty') {
-    // Labels come from the ProviderAdapter registry so every provider renders
-    // (the previous open-coded map showed `undefined` for openai/local).
+    const providerLabel = {
+      bedrock: 'AWS Bedrock',
+      vertex: 'Google Vertex AI',
+      foundry: 'Microsoft Foundry'
+    }[apiProvider];
     properties.push({
       label: 'API provider',
-      value: getProviderAdapterById(apiProvider).label
+      value: providerLabel
     });
   }
   if (apiProvider === 'firstParty') {
@@ -318,25 +319,6 @@ export function buildAPIProviderProperties(): Property[] {
       properties.push({
         value: 'Microsoft Foundry auth skipped'
       });
-    }
-  } else if (apiProvider === 'deepseek' || apiProvider === 'local') {
-    const compatConfig = getActiveOpenAICompatConfig();
-    if (compatConfig) {
-      properties.push({
-        label: 'Base URL',
-        value: compatConfig.baseURL
-      });
-      if (compatConfig.model) {
-        properties.push({
-          label: 'Provider model',
-          value: compatConfig.model
-        });
-      }
-      if (apiProvider === 'deepseek' && !compatConfig.apiKey) {
-        properties.push({
-          value: 'DEEPSEEK_API_KEY not set'
-        });
-      }
     }
   }
   const proxyUrl = getProxyUrl();

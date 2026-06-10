@@ -7,7 +7,6 @@ export type APIProvider =
   | 'vertex'
   | 'foundry'
   | 'openai'
-  | 'deepseek'
   | 'local'
 
 export function getAPIProvider(): APIProvider {
@@ -19,29 +18,16 @@ export function getAPIProvider(): APIProvider {
         ? 'foundry'
         : isEnvTruthy(process.env.CLAUDE_CODE_USE_OPENAI)
           ? 'openai'
-          : // DeepSeek's hosted API (OpenAI-compatible transport with
-            // first-class defaults: model, token ceilings, context window).
-            isEnvTruthy(process.env.CLAUDE_CODE_USE_DEEPSEEK)
-            ? 'deepseek'
-            : // Any OpenAI-compatible /chat/completions endpoint: Ollama, vLLM,
-              // LM Studio, OpenRouter, Groq, etc. Runs fully local, no API key.
-              isEnvTruthy(process.env.CLAUDE_CODE_USE_LOCAL)
-              ? 'local'
-              : 'firstParty'
+          : // Any OpenAI-compatible /chat/completions endpoint: Ollama, vLLM,
+            // LM Studio, OpenRouter, Groq, etc. Runs fully local, no API key.
+            isEnvTruthy(process.env.CLAUDE_CODE_USE_LOCAL)
+            ? 'local'
+            : 'firstParty'
 }
 
 /** True when routing to a self-hosted / OpenAI-compatible local endpoint. */
 export function isLocalProvider(): boolean {
   return getAPIProvider() === 'local'
-}
-
-/**
- * Providers that route through the OpenAI-compatible /chat/completions fetch
- * adapter (src/services/api/local-fetch-adapter.ts) rather than a native SDK.
- */
-export function usesOpenAICompatAdapter(): boolean {
-  const p = getAPIProvider()
-  return p === 'local' || p === 'deepseek'
 }
 
 // ── Canonical provider predicates ───────────────────────────────────
@@ -60,18 +46,12 @@ export function isThirdPartyProvider(): boolean {
 /**
  * Providers that authenticate with their own credentials (or none at all) and
  * therefore do NOT require an Anthropic API key / OAuth login: Bedrock, Vertex,
- * Foundry, DeepSeek, and local. Note this intentionally excludes Codex
- * ('openai'), whose authentication is handled via its own OAuth path.
+ * Foundry, and local. Note this intentionally excludes Codex ('openai'), whose
+ * authentication is handled via its own OAuth path.
  */
 export function providerBringsOwnCredentials(): boolean {
   const p = getAPIProvider()
-  return (
-    p === 'bedrock' ||
-    p === 'vertex' ||
-    p === 'foundry' ||
-    p === 'deepseek' ||
-    p === 'local'
-  )
+  return p === 'bedrock' || p === 'vertex' || p === 'foundry' || p === 'local'
 }
 
 export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {

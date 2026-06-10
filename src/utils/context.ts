@@ -1,6 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: ANT-ONLY import markers must not be reordered
 import { CONTEXT_1M_BETA_HEADER } from '../constants/betas.js'
-import { getOpenAICompatContextWindow } from '../services/api/openai-compat-config.js'
 import { getGlobalConfig } from './config.js'
 import { isEnvTruthy } from './envUtils.js'
 import { getCanonicalName } from './model/model.js'
@@ -70,15 +69,6 @@ export function getContextWindowForModel(
   // [1m] suffix — explicit client-side opt-in, respected over all detection
   if (has1mContext(model)) {
     return 1_000_000
-  }
-
-  // Adapter-backed OpenAI-compatible providers serve a model with its own
-  // window (DeepSeek: 128K < the 200K Claude default), regardless of the
-  // model id on the request. Using the real window makes auto-compact fire
-  // before the upstream API starts rejecting oversized requests.
-  const compatWindow = getOpenAICompatContextWindow()
-  if (compatWindow) {
-    return compatWindow
   }
 
   const cap = getModelCapability(model)
