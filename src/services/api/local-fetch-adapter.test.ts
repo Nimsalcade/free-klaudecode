@@ -256,9 +256,15 @@ describe('createLocalFetch — non-streaming', () => {
 
 describe('createLocalFetch — errors', () => {
   test('returns a structured error when the server is unreachable', async () => {
+    // Use a closed port on localhost so the connection is refused immediately
+    // rather than timing out. TEST-NET-1 (192.0.2.1) can hang for 75s on macOS
+    // because the TCP SYN is silently dropped instead of refused.
+    const deadServer = Bun.serve({ port: 0, fetch: () => new Response('ok') })
+    const deadPort = deadServer.port
+    deadServer.stop(true)
+
     const localFetch = createLocalFetch({
-      // Reserved TEST-NET-1 address; connection refused/unreachable.
-      baseURL: 'http://192.0.2.1:9/v1',
+      baseURL: `http://127.0.0.1:${deadPort}/v1`,
       apiKey: 'not-needed',
       model: 'm',
     })

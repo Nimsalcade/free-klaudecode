@@ -184,7 +184,7 @@ function startDetachedPoll(taskId: string, sessionId: string, url: string, getAp
 // multi-second teleportToRemote round-trip.
 function buildLaunchMessage(disconnectedBridge?: boolean): string {
   const prefix = disconnectedBridge ? `${REMOTE_CONTROL_DISCONNECTED_MSG} ` : '';
-  return `${DIAMOND_OPEN} ultraplan\n${prefix}Starting Claude Code on the web…`;
+  return `${DIAMOND_OPEN} ultraplan\n${prefix}Starting local planning session...`;
 }
 function buildSessionReadyMessage(url: string): string {
   return `${DIAMOND_OPEN} ultraplan · Monitor progress in Claude Code on the web ${url}\nYou can continue working — when the ${DIAMOND_OPEN} fills, press ↓ to view results`;
@@ -299,87 +299,16 @@ async function launchDetached(opts: {
   signal: AbortSignal;
   onSessionReady?: (msg: string) => void;
 }): Promise<void> {
-  const {
-    blurb,
-    seedPlan,
-    getAppState,
-    setAppState,
-    signal,
-    onSessionReady
-  } = opts;
-  // Hoisted so the catch block can archive the remote session if an error
-  // occurs after teleportToRemote succeeds (avoids 30min orphan).
-  let sessionId: string | undefined;
+  const { setAppState } = opts;
   try {
-    const model = getUltraplanModel();
-    const eligibility = await checkRemoteAgentEligibility();
-    if (!eligibility.eligible) {
-      logEvent('tengu_ultraplan_create_failed', {
-        reason: 'precondition' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        precondition_errors: eligibility.errors.map(e => e.type).join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-      const reasons = eligibility.errors.map(formatPreconditionError).join('\n');
-      enqueuePendingNotification({
-        value: `ultraplan: cannot launch remote session —\n${reasons}`,
-        mode: 'task-notification'
-      });
-      return;
-    }
-    const prompt = buildUltraplanPrompt(blurb, seedPlan);
-    let bundleFailMsg: string | undefined;
-    const session = await teleportToRemote({
-      initialMessage: prompt,
-      description: blurb || 'Refine local plan',
-      model,
-      permissionMode: 'plan',
-      ultraplan: true,
-      signal,
-      useDefaultEnvironment: true,
-      onBundleFail: msg => {
-        bundleFailMsg = msg;
-      }
+    // Skip remote launch for local DeepSeek execution.
+    // The query is in the transcript, so the local model will pick it up
+    // now that we're bypassing the remote session error.
+    enqueuePendingNotification({
+      value: 'Please execute the user\'s ultraplan request above using maximum effort.',
+      mode: 'task-notification',
+      isMeta: true
     });
-    if (!session) {
-      logEvent('tengu_ultraplan_create_failed', {
-        reason: (bundleFailMsg ? 'bundle_fail' : 'teleport_null') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-      enqueuePendingNotification({
-        value: `ultraplan: session creation failed${bundleFailMsg ? ` — ${bundleFailMsg}` : ''}. See --debug for details.`,
-        mode: 'task-notification'
-      });
-      return;
-    }
-    sessionId = session.id;
-    const url = getRemoteSessionUrl(session.id, process.env.SESSION_INGRESS_URL);
-    setAppState(prev => ({
-      ...prev,
-      ultraplanSessionUrl: url,
-      ultraplanLaunching: undefined
-    }));
-    onSessionReady?.(buildSessionReadyMessage(url));
-    logEvent('tengu_ultraplan_launched', {
-      has_seed_plan: Boolean(seedPlan),
-      model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
-    // TODO(#23985): replace registerRemoteAgentTask + startDetachedPoll with
-    // ExitPlanModeScanner inside startRemoteSessionPolling.
-    const {
-      taskId
-    } = registerRemoteAgentTask({
-      remoteTaskType: 'ultraplan',
-      session: {
-        id: session.id,
-        title: blurb || 'Ultraplan'
-      },
-      command: blurb,
-      context: {
-        abortController: new AbortController(),
-        getAppState,
-        setAppState
-      },
-      isUltraplan: true
-    });
-    startDetachedPoll(taskId, session.id, url, getAppState, setAppState);
   } catch (e) {
     logError(e);
     logEvent('tengu_ultraplan_create_failed', {
@@ -389,19 +318,7 @@ async function launchDetached(opts: {
       value: `ultraplan: unexpected error — ${errorMessage(e)}`,
       mode: 'task-notification'
     });
-    if (sessionId) {
-      // Error after teleport succeeded — archive so the remote doesn't sit
-      // running for 30min with nobody polling it.
-      void archiveRemoteSession(sessionId).catch(err => logForDebugging('ultraplan: failed to archive orphaned session', err));
-      // ultraplanSessionUrl may have been set before the throw; clear it so
-      // the "already polling" guard doesn't block future launches.
-      setAppState(prev => prev.ultraplanSessionUrl ? {
-        ...prev,
-        ultraplanSessionUrl: undefined
-      } : prev);
-    }
   } finally {
-    // No-op on success: the url-setting setAppState already cleared this.
     setAppState(prev => prev.ultraplanLaunching ? {
       ...prev,
       ultraplanLaunching: undefined

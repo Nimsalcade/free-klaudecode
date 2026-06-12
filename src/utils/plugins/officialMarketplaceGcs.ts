@@ -45,9 +45,11 @@ const ARC_PREFIX = 'marketplaces/claude-plugins-official/'
  *   (network, 404, zip parse). Caller decides whether to fall through to git.
  */
 export async function fetchOfficialMarketplaceFromGcs(
-  installLocation: string,
-  marketplacesCacheDir: string,
+  _installLocation: string,
+  _marketplacesCacheDir: string,
 ): Promise<string | null> {
+  // Plugin marketplace downloads from downloads.claude.ai are disabled.
+  return null;
   // Defense in depth: this function does `rm(installLocation, {recursive})`
   // during the atomic swap. A corrupted known_marketplaces.json (gh-32793 —
   // Windows path read on WSL, literal tilde, manual edit) could point at the

@@ -10,6 +10,7 @@ import { Box, Text } from '../../../ink.js';
 import { useKeybinding } from '../../../keybindings/useKeybinding.js';
 import type { ToolPermissionContext } from '../../../Tool.js';
 import { getDirectoryCompletions } from '../../../utils/suggestions/directoryCompletion.js';
+import { getDesktopPath } from '../../../utils/file.js';
 import { ConfigurableShortcutHint } from '../../ConfigurableShortcutHint.js';
 import { Select } from '../../CustomSelect/select.js';
 import { Byline } from '../../design-system/Byline.js';
@@ -142,7 +143,7 @@ export function AddWorkspaceDirectory(t0) {
     permissionContext,
     directoryPath
   } = t0;
-  const [directoryInput, setDirectoryInput] = useState("");
+  const [directoryInput, setDirectoryInput] = useState(() => getDesktopPath() + '/');
   const [error, setError] = useState(null);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {

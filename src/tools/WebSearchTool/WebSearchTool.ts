@@ -167,7 +167,6 @@ export const WebSearchTool = buildTool({
   },
   isEnabled() {
     const provider = getAPIProvider()
-    const model = getMainLoopModel()
 
     // Enable for firstParty
     if (provider === 'firstParty') {
@@ -176,6 +175,7 @@ export const WebSearchTool = buildTool({
 
     // Enable for Vertex AI with supported models (Claude 4.0+)
     if (provider === 'vertex') {
+      const model = getMainLoopModel()
       const supportsWebSearch =
         model.includes('claude-opus-4') ||
         model.includes('claude-sonnet-4') ||

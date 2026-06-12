@@ -42,15 +42,6 @@ const NO_PROXY_LIST = [
   '10.0.0.0/8',
   '172.16.0.0/12',
   '192.168.0.0/16',
-  // Anthropic API: no upstream route will ever match, and the MITM breaks
-  // non-Bun runtimes (Python httpx/certifi doesn't trust the forged CA).
-  // Three forms because NO_PROXY parsing differs across runtimes:
-  //   *.anthropic.com  — Bun, curl, Go (glob match)
-  //   .anthropic.com   — Python urllib/httpx (suffix match, strips leading dot)
-  //   anthropic.com    — apex domain fallback
-  'anthropic.com',
-  '.anthropic.com',
-  '*.anthropic.com',
   'github.com',
   'api.github.com',
   '*.github.com',
@@ -118,7 +109,7 @@ export async function initUpstreamProxy(opts?: {
   const baseUrl =
     opts?.ccrBaseUrl ??
     process.env.ANTHROPIC_BASE_URL ??
-    'https://api.anthropic.com'
+    'http://localhost:0'
   const caBundlePath =
     opts?.caBundlePath ?? join(homedir(), '.ccr', 'ca-bundle.crt')
 

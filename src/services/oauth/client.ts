@@ -477,68 +477,7 @@ export async function getOrganizationUUID(): Promise<string | null> {
  * @returns Whether or not the oauth account info was populated.
  */
 export async function populateOAuthAccountInfoIfNeeded(): Promise<boolean> {
-  // Check env vars first (synchronous, no network call needed).
-  // SDK callers like Cowork can provide account info directly, which also
-  // eliminates the race condition where early telemetry events lack account info.
-  // NB: If/when adding additional SDK-relevant functionality requiring _other_ OAuth account properties,
-  // please reach out to #proj-cowork so the team can add additional env var fallbacks.
-  const envAccountUuid = process.env.CLAUDE_CODE_ACCOUNT_UUID
-  const envUserEmail = process.env.CLAUDE_CODE_USER_EMAIL
-  const envOrganizationUuid = process.env.CLAUDE_CODE_ORGANIZATION_UUID
-  const hasEnvVars = Boolean(
-    envAccountUuid && envUserEmail && envOrganizationUuid,
-  )
-  if (envAccountUuid && envUserEmail && envOrganizationUuid) {
-    if (!getGlobalConfig().oauthAccount) {
-      storeOAuthAccountInfo({
-        accountUuid: envAccountUuid,
-        emailAddress: envUserEmail,
-        organizationUuid: envOrganizationUuid,
-      })
-    }
-  }
-
-  // Wait for any in-flight token refresh to complete first, since
-  // refreshOAuthToken already fetches and stores profile info
-  await checkAndRefreshOAuthTokenIfNeeded()
-
-  const config = getGlobalConfig()
-  if (
-    (config.oauthAccount &&
-      config.oauthAccount.billingType !== undefined &&
-      config.oauthAccount.accountCreatedAt !== undefined &&
-      config.oauthAccount.subscriptionCreatedAt !== undefined) ||
-    !isClaudeAISubscriber() ||
-    !hasProfileScope()
-  ) {
-    return false
-  }
-
-  const tokens = getClaudeAIOAuthTokens()
-  if (tokens?.accessToken) {
-    const profile = await getOauthProfileFromOauthToken(tokens.accessToken)
-    if (profile) {
-      if (hasEnvVars) {
-        logForDebugging(
-          'OAuth profile fetch succeeded, overriding env var account info',
-          { level: 'info' },
-        )
-      }
-      storeOAuthAccountInfo({
-        accountUuid: profile.account.uuid,
-        emailAddress: profile.account.email,
-        organizationUuid: profile.organization.uuid,
-        displayName: profile.account.display_name || undefined,
-        hasExtraUsageEnabled:
-          profile.organization.has_extra_usage_enabled ?? false,
-        billingType: profile.organization.billing_type ?? undefined,
-        accountCreatedAt: profile.account.created_at,
-        subscriptionCreatedAt:
-          profile.organization.subscription_created_at ?? undefined,
-      })
-      return true
-    }
-  }
+  // Anthropic OAuth connections are severed — no profile fetch to api.anthropic.com.
   return false
 }
 

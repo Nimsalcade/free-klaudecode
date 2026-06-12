@@ -2,7 +2,7 @@ import { c as _c } from "react/compiler-runtime";
 import chalk from 'chalk';
 import figures from 'figures';
 import React, { useEffect } from 'react';
-import { getAdditionalDirectoriesForClaudeMd, setAdditionalDirectoriesForClaudeMd } from '../../bootstrap/state.js';
+import { getAdditionalDirectoriesForClaudeMd, setAdditionalDirectoriesForClaudeMd, setCwdState } from '../../bootstrap/state.js';
 import type { LocalJSXCommandContext } from '../../commands.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
 import { AddWorkspaceDirectory } from '../../components/permissions/rules/AddWorkspaceDirectory.js';
@@ -92,16 +92,17 @@ export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXComma
       setAdditionalDirectoriesForClaudeMd([...currentDirs, path]);
     }
     SandboxManager.refreshConfig();
+    setCwdState(path);
     let message: string;
     if (remember) {
       try {
         persistPermissionUpdate(permissionUpdate);
-        message = `Added ${chalk.bold(path)} as a working directory and saved to local settings`;
+        message = `Switched to ${chalk.bold(path)} and saved to local settings`;
       } catch (error) {
         message = `Added ${chalk.bold(path)} as a working directory. Failed to save to local settings: ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
     } else {
-      message = `Added ${chalk.bold(path)} as a working directory for this session`;
+      message = `Switched to ${chalk.bold(path)} for this session`;
     }
     const messageWithHint = `${message} ${chalk.dim('· /permissions to manage')}`;
     onDone(messageWithHint);

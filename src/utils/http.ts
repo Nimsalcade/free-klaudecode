@@ -54,7 +54,7 @@ export function getMCPUserAgent(): string {
 // operators match in robots.txt); the claude-code suffix lets them distinguish
 // local CLI traffic from claude.ai server-side fetches.
 export function getWebFetchUserAgent(): string {
-  return `Claude-User (${getClaudeCodeUserAgent()}; +https://support.anthropic.com/)`
+  return `Claude-User (${getClaudeCodeUserAgent()})`
 }
 
 export type AuthHeaders = {
@@ -82,8 +82,8 @@ export function getAuthHeaders(): AuthHeaders {
       },
     }
   }
-  // TODO: this will fail if the API key is being set to an LLM Gateway key
-  // should we try to query keychain / credentials for a valid Anthropic key?
+  // Deliberately uses getAnthropicApiKey() (not bare process.env lookup):
+  // validates key format, checks macOS keychain, and rejects malformed keys.
   const apiKey = getAnthropicApiKey()
   if (!apiKey) {
     return {

@@ -2,7 +2,6 @@ import React from 'react'
 import { Box, Text } from '../ink.js'
 import { Select } from './CustomSelect/index.js'
 import { Dialog } from './design-system/Dialog.js'
-import { CCR_TERMS_URL } from '../commands/ultraplan.js'
 
 type UltraplanLaunchChoice = 'launch' | 'cancel'
 
@@ -21,11 +20,8 @@ export function UltraplanLaunchDialog({ onChoice }: Props): React.ReactNode {
     >
       <Box flexDirection="column" gap={1}>
         <Text>
-          This will start a remote Claude Code session on the web to draft an
-          advanced plan using Opus. The plan typically takes 10–30 minutes.
-          Your terminal stays free while it works.
+          This will start an advanced local planning session to draft a complex architectural plan using DeepSeek. The plan may take a few minutes to generate. Your terminal will be busy while it works.
         </Text>
-        <Text dimColor>Terms: {CCR_TERMS_URL}</Text>
       </Box>
       <Select
         options={[

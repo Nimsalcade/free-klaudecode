@@ -27,6 +27,13 @@ export async function validateModel(
     return { valid: false, error: 'Model name cannot be empty' }
   }
 
+  // Local / OpenAI-compatible provider: the model name is whatever the local
+  // server (Ollama, vLLM, LM Studio, ...) accepts — it is not an Anthropic
+  // model, so skip the allowlist and the Anthropic validation API call.
+  if (getAPIProvider() === 'local') {
+    return { valid: true }
+  }
+
   // Check against availableModels allowlist before any API call
   if (!isModelAllowed(normalizedModel)) {
     return {

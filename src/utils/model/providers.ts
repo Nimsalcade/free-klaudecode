@@ -59,23 +59,20 @@ export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS
 }
 
 /**
- * Check if ANTHROPIC_BASE_URL is a first-party Anthropic API URL.
- * Returns true if not set (default API) or points to api.anthropic.com
- * (or api-staging.anthropic.com for ant users).
+ * Always returns false — no first-party Anthropic connections permitted.
+ * All API traffic routes through the local or user-configured provider.
  */
 export function isFirstPartyAnthropicBaseUrl(): boolean {
-  const baseUrl = process.env.ANTHROPIC_BASE_URL
-  if (!baseUrl) {
-    return true
-  }
-  try {
-    const host = new URL(baseUrl).host
-    const allowedHosts = ['api.anthropic.com']
-    if (process.env.USER_TYPE === 'ant') {
-      allowedHosts.push('api-staging.anthropic.com')
-    }
-    return allowedHosts.includes(host)
-  } catch {
-    return false
-  }
+  return false
+}
+
+/**
+ * Always skip Anthropic-specific auth ceremony:
+ * keychain prefetch, OAuth population, org validation, etc.
+ *
+ * All Anthropic connections have been severed. Auth is handled entirely
+ * through the configured provider (local, OpenAI-compatible, etc.).
+ */
+export function shouldSkipAnthropicAuth(): boolean {
+  return true
 }

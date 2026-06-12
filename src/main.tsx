@@ -107,6 +107,7 @@ import { getContextWindowForModel } from './utils/context.js';
 import { loadConversationForResume } from './utils/conversationRecovery.js';
 import { buildDeepLinkBanner } from './utils/deepLink/banner.js';
 import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from './utils/envUtils.js';
+import { shouldSkipAnthropicAuth } from './utils/model/providers.js';
 import { refreshExampleCommands } from './utils/exampleCommands.js';
 import type { FpsMetrics } from './utils/fpsTracker.js';
 import { getWorktreePaths } from './utils/getWorktreePaths.js';
@@ -911,7 +912,29 @@ async function run(): Promise<CommanderCommand> {
     // Must resolve before init() which triggers the first settings read
     // (applySafeConfigEnvironmentVariables → getSettingsForSource('policySettings')
     // → isRemoteManagedSettingsEligible → sync keychain reads otherwise ~65ms).
-    await Promise.all([ensureMdmSettingsLoaded(), ensureKeychainPrefetchCompleted()]);
+    //
+    // Local provider: skip entirely. These prefetch Anthropic keychain tokens
+    // and MDM managed settings — neither is used by the local provider (it has
+    // its own transport+auth). Under the isolated HOME that run-local.sh sets,
+    // the macOS keychain subprocess can hang indefinitely because the default
+    // keychain search path doesn't exist.
+    if (shouldSkipAnthropicAuth()) {
+      logForDebugging('[STARTUP] Skipping MDM/keychain prefetch (non-Anthropic provider)');
+    } else {
+      logForDebugging('[STARTUP] Awaiting MDM/keychain prefetch...');
+      const PREACTION_AUTH_TIMEOUT_MS = 5_000;
+      await Promise.race([
+        Promise.all([ensureMdmSettingsLoaded(), ensureKeychainPrefetchCompleted()]),
+        new Promise<void>(resolve => {
+          const t = setTimeout(() => {
+            logForDebugging('[STARTUP] MDM/keychain prefetch timed out after 5s — proceeding without');
+            resolve();
+          }, PREACTION_AUTH_TIMEOUT_MS);
+          (t as { unref?: () => void }).unref?.();
+        }),
+      ]);
+      logForDebugging('[STARTUP] MDM/keychain prefetch complete');
+    }
     profileCheckpoint('preAction_after_mdm');
     await init();
     profileCheckpoint('preAction_after_init');
@@ -2031,6 +2054,7 @@ async function run(): Promise<CommanderCommand> {
     profileCheckpoint('action_commands_loaded');
 
     // Parse CLI agents if provided via --agents flag
+    profileCheckpoint('action_after_commands_loaded');
     let cliAgents: typeof agentDefinitionsResult.activeAgents = [];
     if (agentsJson) {
       try {
@@ -2060,6 +2084,7 @@ async function run(): Promise<CommanderCommand> {
         logForDebugging(`Warning: agent "${agentSetting}" not found. ` + `Available agents: ${agentDefinitions.activeAgents.map(a => a.agentType).join(', ')}. ` + `Using default behavior.`);
       }
     }
+    profileCheckpoint('action_after_agent_setting');
 
     // Store the main thread agent type in bootstrap state so hooks can access it
     setMainThreadAgentType(mainThreadAgentDefinition?.agentType);
@@ -2087,6 +2112,7 @@ async function run(): Promise<CommanderCommand> {
         systemPrompt = agentSystemPrompt;
       }
     }
+    profileCheckpoint('action_after_agent_system_prompt');
 
     // initialPrompt goes first so its slash command (if any) is processed;
     // user-provided text becomes trailing context.
@@ -2136,6 +2162,7 @@ async function run(): Promise<CommanderCommand> {
         logForDebugging(`[AdvisorTool] Advisor model: ${advisorModel}`);
       }
     }
+    profileCheckpoint('action_after_advisor');
 
     // For tmux teammates with --agent-type, append the custom agent's prompt
     if (isAgentSwarmsEnabled() && storedTeammateOpts?.agentId && storedTeammateOpts?.agentName && storedTeammateOpts?.teamName && storedTeammateOpts?.agentType) {
@@ -2191,6 +2218,8 @@ async function run(): Promise<CommanderCommand> {
         setUserMsgOptIn(true);
       }
     }
+    profileCheckpoint('action_after_brief_check');
+
     // Coordinator mode has its own system prompt and filters out Sleep, so
     // the generic proactive prompt would tell it to call a tool it can't
     // access and conflict with delegation instructions.
@@ -2207,6 +2236,7 @@ async function run(): Promise<CommanderCommand> {
       const assistantAddendum = assistantModule.getAssistantSystemPromptAddendum();
       appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${assistantAddendum}` : assistantAddendum;
     }
+    profileCheckpoint('action_before_setup_screens');
 
     // Ink root is only needed for interactive sessions — patchConsole in the
     // Ink constructor would swallow console output in headless mode.
@@ -2304,6 +2334,7 @@ async function run(): Promise<CommanderCommand> {
         await exitWithError(root, orgValidation.message);
       }
     }
+    profileCheckpoint('action_after_interactive_setup');
 
     // If gracefulShutdown was initiated (e.g., user rejected trust dialog),
     // process.exitCode will be set. Skip all subsequent operations that could
@@ -2319,6 +2350,7 @@ async function run(): Promise<CommanderCommand> {
     // code in untrusted directories before user consent.
     // Must be after inline plugins are set (if any) so --plugin-dir LSP servers are included.
     initializeLspServerManager();
+    profileCheckpoint('action_after_lsp_init');
 
     // Show settings validation errors after trust is established
     // MCP config errors don't block settings from loading, so exclude them
@@ -2334,6 +2366,7 @@ async function run(): Promise<CommanderCommand> {
         });
       }
     }
+    profileCheckpoint('action_after_settings_validation');
 
     // Check quota status, fast mode, passes eligibility, and bootstrap data
     // after trust is established. These make API calls which could trigger
@@ -2373,11 +2406,13 @@ async function run(): Promise<CommanderCommand> {
       // Resolve fast mode org status from cache (no network)
       resolveFastModeStatusFromCache();
     }
+    profileCheckpoint('action_after_prefetches');
     if (!isNonInteractiveSession) {
       void refreshExampleCommands(); // Pre-fetch example commands (runs git log, no API call)
     }
 
     // Resolve MCP configs (started early, overlaps with setup/trust dialog work)
+    profileCheckpoint('action_before_mcp_config_resolve');
     const {
       servers: existingMcpConfigs
     } = await mcpConfigPromise;
@@ -2556,7 +2591,9 @@ async function run(): Promise<CommanderCommand> {
       // skip — no-op
     } else if (isNonInteractiveSession) {
       // In headless mode, await to ensure plugin sync completes before CLI exits
+      logForDebugging('[STARTUP] Awaiting initializeVersionedPlugins...');
       await initializeVersionedPlugins();
+      logForDebugging('[STARTUP] initializeVersionedPlugins complete');
       profileCheckpoint('action_after_plugins_init');
       void cleanupOrphanedPluginVersionsInBackground().then(() => getGlobExclusionsForPluginCache());
     } else {
@@ -2610,8 +2647,15 @@ async function run(): Promise<CommanderCommand> {
       // rejection — this just prevents the spurious global handler fire.
       sessionStartHooksPromise?.catch(() => {});
       profileCheckpoint('before_validateForceLoginOrg');
-      // Validate org restriction for non-interactive sessions
-      const orgValidation = await validateForceLoginOrg();
+      // Validate org restriction for non-interactive sessions.
+      // Local provider: skip — it uses its own auth and never touches
+      // Anthropic OAuth tokens. validateForceLoginOrg reads the keychain
+      // and hits the profile endpoint, both of which hang under isolated HOME.
+      logForDebugging('[STARTUP] Awaiting validateForceLoginOrg...');
+      const orgValidation = shouldSkipAnthropicAuth()
+        ? { valid: true as const }
+        : await validateForceLoginOrg();
+      logForDebugging('[STARTUP] validateForceLoginOrg complete');
       if (!orgValidation.valid) {
         process.stderr.write(orgValidation.message + '\n');
         process.exit(1);
@@ -2725,8 +2769,35 @@ async function run(): Promise<CommanderCommand> {
       // (processBatched with Promise.all). claude.ai is awaited too — its
       // fetch was kicked off early (line ~2558) so only residual time blocks
       // here. --bare skips claude.ai entirely for perf-sensitive scripts.
+      logForDebugging('[STARTUP] Awaiting MCP server connect...');
       profileCheckpoint('before_connectMcp');
-      await connectMcpBatch(regularMcpConfigs, 'regular');
+      // Bounded wait: a single unreachable MCP server (or slow connector)
+      // must not hang the whole -p run before the model is ever called.
+      // connectMcpBatch's promise keeps running in the background and updates
+      // headlessStore as servers connect, so turn 2+ still sees them; we just
+      // don't block turn 1 indefinitely. Per-server connects already have their
+      // own 30s cap (getConnectionTimeoutMs); this caps the aggregate wait.
+      // Overridable via MCP_STARTUP_TIMEOUT for users who want to hard-wait.
+      const REGULAR_MCP_STARTUP_TIMEOUT_MS =
+        parseInt(process.env.MCP_STARTUP_TIMEOUT || '', 10) || 10_000;
+      const regularMcpConnect = connectMcpBatch(regularMcpConfigs, 'regular');
+      await Promise.race([
+        regularMcpConnect,
+        new Promise<void>(resolve => {
+          const t = setTimeout(() => {
+            logForDebugging(
+              `[MCP] regular server connect exceeded ${REGULAR_MCP_STARTUP_TIMEOUT_MS}ms; proceeding (connect continues in background)`,
+            );
+            resolve();
+          }, REGULAR_MCP_STARTUP_TIMEOUT_MS);
+          // Don't keep the event loop alive solely for this timer.
+          (t as { unref?: () => void }).unref?.();
+          regularMcpConnect.finally(() => {
+            clearTimeout(t);
+            resolve();
+          });
+        }),
+      ]);
       profileCheckpoint('after_connectMcp');
       // Dedup: suppress plugin MCP servers that duplicate a claude.ai
       // connector (connector wins), then connect claude.ai servers.

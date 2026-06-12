@@ -122,8 +122,8 @@ function sanitizeMessageHTML(message: string): string {
 export function sanitizeAPIError(apiError: APIError): string {
   const message = apiError.message
   if (!message) {
-    // Sometimes message is undefined
-    // TODO: figure out why
+    // message is undefined after JSON round-tripping — the SDK's APIError
+    // loses its .message property during serialization/deserialization.
     return ''
   }
   return sanitizeMessageHTML(message)

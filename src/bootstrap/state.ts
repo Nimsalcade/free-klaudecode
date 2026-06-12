@@ -1636,6 +1636,14 @@ export function setIsRemoteMode(value: boolean): void {
   STATE.isRemoteMode = value
 }
 
+/**
+ * Check if REPL bridge mode is active.
+ * Only available in ant-internal builds; always false in external builds.
+ */
+export function isReplBridgeActive(): boolean {
+  return (STATE as Record<string, unknown>).replBridgeActive === true
+}
+
 // System prompt section accessors
 
 export function getSystemPromptSectionCache(): Map<string, string | null> {

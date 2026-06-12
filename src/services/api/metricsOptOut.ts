@@ -51,10 +51,13 @@ async function _fetchMetricsEnabled(): Promise<MetricsEnabledResponse> {
 }
 
 async function _checkMetricsEnabledAPI(): Promise<MetricsStatus> {
-  // Incident kill switch: skip the network call when nonessential traffic is disabled.
-  // Returning enabled:false sheds load at the consumer (bigqueryExporter skips
-  // export). Matches the non-subscriber early-return shape below.
-  if (isEssentialTrafficOnly()) {
+  // Metrics API calls to api.anthropic.com are disabled.
+  // Always return disabled — no connections to Anthropic permitted.
+  return { enabled: false, hasError: false }
+  /* dead code below */
+
+  /* eslint-disable-next-line no-unreachable */
+  if (false && isEssentialTrafficOnly()) {
     return { enabled: false, hasError: false }
   }
 

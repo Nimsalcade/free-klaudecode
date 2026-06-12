@@ -71,6 +71,15 @@ export function profileCheckpoint(name: string): void {
   // Only capture memory when detailed profiling enabled (env var)
   if (DETAILED_PROFILING) {
     memorySnapshots.push(process.memoryUsage())
+    // Emit each checkpoint to the debug log so a hang between checkpoints is
+    // visible in --debug-to-stderr output (the last logged checkpoint names
+    // the phase that stalled). Gated on detailed profiling to stay silent in
+    // normal runs.
+    const marks = perf.getEntriesByType('mark')
+    const last = marks[marks.length - 1]
+    logForDebugging(
+      `[STARTUP_PROFILE] ${name} @ ${formatMs(last?.startTime ?? 0)}ms`,
+    )
   }
 }
 

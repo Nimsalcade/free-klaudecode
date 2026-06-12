@@ -3,6 +3,7 @@ import { type as osType, version as osVersion, release as osRelease } from 'os'
 import { env } from '../utils/env.js'
 import { getIsGit } from '../utils/git.js'
 import { getCwd } from '../utils/cwd.js'
+import { getDesktopPath } from '../utils/file.js'
 import { getIsNonInteractiveSession } from '../bootstrap/state.js'
 import { getCurrentWorktreeSession } from '../utils/worktree.js'
 import { getSessionStartDate } from './common.js'
@@ -220,6 +221,7 @@ function getSimpleDoingTasksSection(): string {
 
   const items = [
     `The user will primarily request you to perform software engineering tasks. These may include solving bugs, adding new functionality, refactoring code, explaining code, and more. When given an unclear or generic instruction, consider it in the context of these software engineering tasks and the current working directory. For example, if the user asks you to change "methodName" to snake case, do not reply with just "method_name", instead find the method in the code and modify the code.`,
+    `When the user asks to create a new project, directory, or application from scratch (not modifying files in the current repo), always create it on the Desktop (${getDesktopPath()}) rather than inside the current working directory. Use /add-dir to switch to it after creation.`,
     `You are highly capable and often allow users to complete ambitious tasks that would otherwise be too complex or take too long. You should defer to user judgement about whether a task is too large to attempt.`,
     // @[MODEL LAUNCH]: capy v8 assertiveness counterweight (PR #24302) — un-gate once validated on external via A/B
     ...(process.env.USER_TYPE === 'ant'
@@ -676,6 +678,7 @@ export async function computeSimpleEnvInfo(
 
   const envItems = [
     `Primary working directory: ${cwd}`,
+    `Desktop path (default location for new projects): ${getDesktopPath()}`,
     isWorktree
       ? `This is a git worktree — an isolated copy of the repository. Run all commands from this directory. Do NOT \`cd\` to the original repository root.`
       : null,
